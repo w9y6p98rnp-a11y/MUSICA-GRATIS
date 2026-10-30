@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090909">
+<title>Musica Gratis</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">♪ <span>Musica Gratis</span></div>
+  <button id="addBtn" class="icon">＋</button>
+  <input id="fileInput" type="file" accept="audio/*" multiple hidden>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">LA TUA MUSICA</p>
+    <h1>Ascolta.<br><span>Scopri.</span></h1>
+    <p class="sub">Un player semplice, gratuito e senza pubblicità. Aggiungi i tuoi brani dal telefono.</p>
+    <button id="chooseBtn" class="primary">＋ Aggiungi musica</button>
+  </section>
+
+  <section>
+    <div class="sectionHead"><h2>La tua libreria</h2><span id="count">0 brani</span></div>
+    <div id="library" class="library">
+      <div class="empty">Non hai ancora aggiunto brani.<br>Premi “Aggiungi musica” per iniziare.</div>
+    </div>
+  </section>
+</main>
+
+<footer id="player" class="player hidden">
+  <div class="now">
+    <div class="cover" id="cover">♪</div>
+    <div class="meta"><b id="title">—</b><span id="artist">—</span></div>
+    <button id="favBtn" class="icon">♡</button>
+  </div>
+  <audio id="audio" controls></audio>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
