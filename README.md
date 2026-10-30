@@ -1,30 +1,13 @@
-# Musica Gratis v2
+# Musica Gratis v4
 
-Versione PWA per iPhone e Android.
+PWA mobile-first per iPhone e Android.
 
-## Funzioni
-- Home con catalogo di musica libera
-- Ricerca
-- Player con play/pausa, avanti/indietro, shuffle e repeat
-- Preferiti
-- Playlist
-- Libreria locale persistente con IndexedDB
-- PWA con cache dell'app
-- Design scuro mobile-first
+## Novità v4
+- Playlist complete: crea, apri, riproduci, aggiungi e rimuovi brani.
+- Pulsante “＋ Playlist” su catalogo, libreria, ricerca e preferiti.
+- Player migliorato con barra di avanzamento, tempo, shuffle, repeat, preferiti e riproduzione continua.
+- Playlist e preferiti salvati sul dispositivo.
+- Service worker v4 per forzare l'aggiornamento della cache.
 
-## Catalogo musicale
-Il catalogo iniziale usa brani ospitati da Wikimedia Commons e indicati nelle relative pagine con licenze che consentono il riuso. Per brani CC BY viene mostrata l'attribuzione nell'app.
-
-Nota: le licenze dei singoli brani devono sempre essere verificate prima di un'eventuale distribuzione commerciale dell'app o del catalogo. La presenza di un file su Wikimedia Commons non significa automaticamente che ogni file del sito abbia la stessa licenza.
-
-## Aggiornamento su GitHub
-Sostituire i vecchi `index.html`, `style.css`, `app.js`, `manifest.json` e aggiungere `sw.js`.
-
-
-## Versione 3
-- Playlist realmente utilizzabili.
-- Pulsante ＋ sui brani per aggiungerli a una playlist.
-- Apertura della playlist per vedere i brani.
-- Rimozione dei brani dalle playlist.
-- Eliminazione delle playlist.
-- Playlist e contenuti salvati localmente nel browser.
+## Nota sulle licenze
+Il catalogo usa brani ospitati su Wikimedia Commons. La licenza va verificata per ogni file; alcuni richiedono attribuzione.
