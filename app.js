@@ -62,7 +62,7 @@ function renderLibrary(){
  $("#localCount").textContent=`${localSongs.length} ${localSongs.length===1?"brano":"brani"}`;
  $("#library").innerHTML=localSongs.length?localSongs.map(s=>songHTML(s)).join(""):`<div class="empty">Non hai ancora aggiunto musica dal telefono.</div>`;
 }
-function songHTML(s){return `<div class="song"><div class="thumb ${s.class||"local"}">${esc((s.title||"♪").slice(0,1).toUpperCase())}</div><div class="info"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")}</span></div><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="addNextById('${s.id}')">⏭</button><button class="songBtn" onclick="openPlaylistPicker('${s.id}')">＋</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`}
+function songHTML(s){return `<div class="song"><button class="thumb ${s.class||"local"}" onclick="openTrackDetail('${s.id}')">${esc((s.title||"♪").slice(0,1).toUpperCase())}</button><button class="info" onclick="openTrackDetail('${s.id}')"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")}</span></button><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="addNextById('${s.id}')">⏭</button><button class="songBtn" onclick="openPlaylistPicker('${s.id}')">＋</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`}
 function renderFavorites(){const list=allSongs().filter(x=>isFav(x.id));$("#favoriteList").innerHTML=list.length?list.map(s=>songHTML(s)).join(""):`<div class="empty">Qui compariranno i tuoi brani preferiti.</div>`}
 function renderPlaylists(){
  const box=$("#playlistsList");
@@ -80,6 +80,18 @@ function renderPlaylistDetail(){
  box.innerHTML='<div class="detailHead"><div><span>PLAYLIST</span><h3>'+esc(p.name)+'</h3><small>'+songs.length+' '+(songs.length===1?"brano":"brani")+'</small></div><div class="detailActions"><button class="smallBtn" onclick="playPlaylist(\''+p.id+'\')">▶ Riproduci</button><button class="dangerBtn" onclick="deletePlaylist(\''+p.id+'\')">Elimina</button></div></div>'+(songs.length?rows:empty);
 }
 function renderAll(){renderGenreFilters();renderCatalog();renderArtists();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
+window.openTrackDetail=id=>{
+ const s=getSong(id); if(!s)return;
+ const fav=isFav(id);
+ const genre=s.genre||"Locale";
+ const license=s.license||"Musica locale";
+ $("#trackDetailContent").innerHTML=`<div class="detailHero"><div class="detailCover ${s.class||"local"}"><span>♪</span></div><div class="detailMain"><span class="detailEyebrow">${esc(genre)}</span><h2>${esc(s.title)}</h2><p>${esc(s.artist||"Musica locale")}</p><small>${esc(license)}</small></div></div><div class="detailButtons"><button class="primary" onclick="playSong('${s.id}');closeTrackDetail()">▶ Riproduci</button><button class="detailBtn" onclick="addNextById('${s.id}');closeTrackDetail()">⏭ Dopo</button><button class="detailBtn" onclick="toggleFavoriteById('${s.id}');openTrackDetail('${s.id}')">${fav?"♥ Nei preferiti":"♡ Preferiti"}</button><button class="detailBtn" onclick="openPlaylistPicker('${s.id}');closeTrackDetail()">＋ Playlist</button></div><div class="detailInfo"><div><span>ARTISTA</span><b>${esc(s.artist||"Musica locale")}</b></div><div><span>GENERE</span><b>${esc(genre)}</b></div><div><span>LICENZA</span><b>${esc(license)}</b></div></div>`;
+ $("#trackDetail").classList.remove("hidden");
+};
+window.closeTrackDetail=()=>$("#trackDetail").classList.add("hidden");
+$("#closeTrackDetail").onclick=closeTrackDetail;
+$("#trackDetail").addEventListener("click",e=>{if(e.target.id==="trackDetail")closeTrackDetail()});
+
 window.playSong=id=>{const s=getSong(id);if(s)start(s)};
 function renderQueue(){
  const box=$("#queueList");
@@ -96,7 +108,7 @@ function start(s,customQueue=null){
  current=s;
  recent=[s.id,...recent.filter(id=>id!==s.id)].slice(0,8);saveRecent();queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
  audio.src=s.url;audio.play().catch(()=>showToast("Tocca ▶ per avviare la riproduzione"));player.classList.remove("hidden");
- $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
+ $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#nowCover").className=`cover big ${s.class||"local"}`;$("#nowCover").textContent="♪";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
  renderQueue();
 }
 function next(){if(!queue.length)return;if(shuffle){let n=Math.floor(Math.random()*queue.length);if(queue.length>1&&n===index)n=(n+1)%queue.length;index=n}else index=(index+1)%queue.length;start(queue[index],queue)}

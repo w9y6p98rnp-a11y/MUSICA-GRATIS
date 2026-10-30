@@ -27,3 +27,7 @@ I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Ve
 - Sezione Artisti
 - Filtri per artista
 - Copertina del brano aggiornata nel player
+
+
+## V8
+Pagina dettaglio del brano con copertina, artista, genere, licenza e azioni rapide: riproduci, aggiungi alla coda, preferiti e playlist.
