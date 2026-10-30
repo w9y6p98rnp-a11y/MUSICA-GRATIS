@@ -20,3 +20,10 @@ I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Ve
 - Aggiungi un brano come prossimo
 - Visualizzazione della coda dal player
 - Rinomina playlist
+
+
+## Novità V7
+- Copertine grafiche per i brani
+- Sezione Artisti
+- Filtri per artista
+- Copertina del brano aggiornata nel player
