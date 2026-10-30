@@ -1,4 +1,4 @@
-# Musica Gratis v5
+# Musica Gratis v6
 
 PWA musicale gratuita per iPhone e Android.
 
@@ -13,3 +13,10 @@ PWA musicale gratuita per iPhone e Android.
 - musica locale salvata sul dispositivo
 
 I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Verificare sempre la licenza del singolo file; per CC BY è richiesta l'attribuzione.
+
+
+## Novità V6
+- Coda di riproduzione
+- Aggiungi un brano come prossimo
+- Visualizzazione della coda dal player
+- Rinomina playlist

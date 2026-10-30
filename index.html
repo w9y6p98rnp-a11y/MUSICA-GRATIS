@@ -78,9 +78,17 @@
     <button id="playBtn" class="playBig">▶</button>
     <button id="nextBtn">⏭</button>
     <button id="repeatBtn">↻</button>
+    <button id="queueBtn">☷</button>
   </div>
   <audio id="audio" preload="metadata"></audio>
 </section>
+
+<div id="queueModal" class="modal hidden">
+  <div class="modalCard">
+    <div class="modalHead"><div><h3>Coda</h3><small id="queueSubtitle">Brani in attesa</small></div><button id="closeQueue" class="close">×</button></div>
+    <div id="queueList"></div>
+  </div>
+</div>
 
 <div id="playlistPicker" class="modal hidden">
   <div class="modalCard">

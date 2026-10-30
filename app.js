@@ -26,7 +26,7 @@ function savePlaylists(){localStorage.setItem("mf_playlists",JSON.stringify(play
 function saveRecent(){localStorage.setItem("mf_recent",JSON.stringify(recent))}
 function toggleFav(item){if(isFav(item.id))favorites=favorites.filter(x=>x!==item.id);else favorites.push(item.id);saveFavs();renderAll();if(current&&current.id===item.id)$("#favNow").textContent=isFav(item.id)?"♥":"♡"}
 function actionsHTML(s, playClass="tiny"){
- return `<button class="${playClass}" onclick="playSong('${s.id}')">▶ Ascolta</button><button class="${playClass}" onclick="openPlaylistPicker('${s.id}')">＋ Playlist</button><button class="${playClass}" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button>`;
+ return `<button class="${playClass}" onclick="playSong('${s.id}')">▶ Ascolta</button><button class="${playClass}" onclick="addNextById('${s.id}')">⏭ Dopo</button><button class="${playClass}" onclick="openPlaylistPicker('${s.id}')">＋ Playlist</button><button class="${playClass}" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button>`;
 }
 function renderGenreFilters(){
  const genres=["Tutti",...new Set(catalog.map(s=>s.genre))];
@@ -47,7 +47,7 @@ function renderLibrary(){
  $("#localCount").textContent=`${localSongs.length} ${localSongs.length===1?"brano":"brani"}`;
  $("#library").innerHTML=localSongs.length?localSongs.map(s=>songHTML(s)).join(""):`<div class="empty">Non hai ancora aggiunto musica dal telefono.</div>`;
 }
-function songHTML(s){return `<div class="song"><div class="thumb">♪</div><div class="info"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")}</span></div><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="openPlaylistPicker('${s.id}')">＋</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`}
+function songHTML(s){return `<div class="song"><div class="thumb">♪</div><div class="info"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")}</span></div><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="addNextById('${s.id}')">⏭</button><button class="songBtn" onclick="openPlaylistPicker('${s.id}')">＋</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`}
 function renderFavorites(){const list=allSongs().filter(x=>isFav(x.id));$("#favoriteList").innerHTML=list.length?list.map(s=>songHTML(s)).join(""):`<div class="empty">Qui compariranno i tuoi brani preferiti.</div>`}
 function renderPlaylists(){
  const box=$("#playlistsList");
@@ -66,12 +66,23 @@ function renderPlaylistDetail(){
 }
 function renderAll(){renderGenreFilters();renderCatalog();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
 window.playSong=id=>{const s=getSong(id);if(s)start(s)};
+function renderQueue(){
+ const box=$("#queueList");
+ if(!queue.length){box.innerHTML='<div class="empty">La coda è vuota.</div>';return}
+ const upcoming=queue.map((s,i)=>({s,i})).filter(x=>x.i!==index);
+ const currentRow=current?`<div class="queueCurrent"><span>IN RIPRODUZIONE</span><b>${esc(current.title)}</b><small>${esc(current.artist||"Musica locale")}</small></div>`:"";
+ box.innerHTML=currentRow+(upcoming.length ? upcoming.map(x=>`<button class="queueItem" onclick="playQueueIndex(${x.i})"><span>${x.i+1}</span><div><b>${esc(x.s.title)}</b><small>${esc(x.s.artist||"Musica locale")}</small></div><strong>▶</strong></button>`).join("") : '<div class="empty">Nessun altro brano in coda.</div>');
+}
+window.playQueueIndex=i=>{if(!queue[i])return;index=i;start(queue[i],queue);renderQueue()};
+window.addNextById=id=>{const s=getSong(id);if(!s)return;if(!current){start(s);return}const existing=queue.findIndex(x=>x.id===id);if(existing>=0){queue.splice(existing,1);if(existing<index)index--;}queue.splice(index+1,0,s);showToast("Aggiunto alla coda");renderQueue()};
+
 window.toggleFavoriteById=id=>{const s=getSong(id);if(s)toggleFav(s)};
 function start(s,customQueue=null){
  current=s;
  recent=[s.id,...recent.filter(id=>id!==s.id)].slice(0,8);saveRecent();queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
  audio.src=s.url;audio.play().catch(()=>showToast("Tocca ▶ per avviare la riproduzione"));player.classList.remove("hidden");
  $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
+ renderQueue();
 }
 function next(){if(!queue.length)return;if(shuffle){let n=Math.floor(Math.random()*queue.length);if(queue.length>1&&n===index)n=(n+1)%queue.length;index=n}else index=(index+1)%queue.length;start(queue[index],queue)}
 function prev(){if(audio.currentTime>3){audio.currentTime=0;return}index=(index-1+queue.length)%queue.length;start(queue[index],queue)}
@@ -80,6 +91,9 @@ $("#playBtn").onclick=()=>{if(!current)return;if(audio.paused){audio.play();$("#
 $("#shuffleBtn").onclick=()=>{shuffle=!shuffle;$("#shuffleBtn").classList.toggle("on",shuffle);showToast(shuffle?"Shuffle attivo":"Shuffle disattivato")};
 $("#repeatBtn").onclick=()=>{repeat=!repeat;audio.loop=repeat;$("#repeatBtn").classList.toggle("on",repeat);showToast(repeat?"Ripetizione attiva":"Ripetizione disattivata")};
 $("#closePlayer").onclick=()=>player.classList.add("hidden");
+$("#queueBtn").onclick=()=>{$("#queueModal").classList.remove("hidden");renderQueue()};
+$("#closeQueue").onclick=()=>$("#queueModal").classList.add("hidden");
+$("#queueModal").addEventListener("click",e=>{if(e.target.id==="queueModal")e.currentTarget.classList.add("hidden")});
 $("#favNow").onclick=()=>current&&toggleFav(current);
 audio.onended=()=>{if(!repeat)next()};
 audio.ontimeupdate=()=>{if(audio.duration){$("#progress").value=audio.currentTime/audio.duration*100;$("#currentTime").textContent=time(audio.currentTime)}};
@@ -97,6 +111,7 @@ $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
 window.openPlaylist=id=>{openPlaylistId=id;renderPlaylistDetail();document.querySelector('#playlistDetail').scrollIntoView({behavior:'smooth',block:'start'})};
+window.renamePlaylist=id=>{const p=playlists.find(x=>x.id===id);if(!p)return;const name=prompt("Nuovo nome",p.name);if(!name||!name.trim())return;p.name=name.trim();savePlaylists();renderAll();showToast("Playlist rinominata")};
 window.deletePlaylist=id=>{const p=playlists.find(x=>x.id===id);if(!p)return;if(!confirm(`Eliminare “${p.name}”?`))return;playlists=playlists.filter(x=>x.id!==id);savePlaylists();openPlaylistId=null;renderAll();showToast("Playlist eliminata")};
 window.removeFromPlaylist=(pid,sid)=>{const p=playlists.find(x=>x.id===pid);if(!p)return;p.ids=p.ids.filter(id=>id!==sid);savePlaylists();renderAll();showToast("Brano rimosso")};
 window.playPlaylist=id=>{const p=playlists.find(x=>x.id===id);if(!p)return;const songs=p.ids.map(getSong).filter(Boolean);if(!songs.length){showToast("Playlist vuota");return}queue=songs;index=0;start(songs[0],songs)};
