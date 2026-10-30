@@ -1,13 +1,17 @@
 const catalog=[
-{id:"carefree",title:"Carefree",artist:"Kevin MacLeod",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Carefree.ogg",class:"a"},
-{id:"acid",title:"AcidJazz",artist:"Kevin MacLeod",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_AcidJazz.ogg",class:"b"},
-{id:"beat",title:"Beat electronic",artist:"beat",license:"Public domain",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Beat_electronic.ogg",class:"c"},
-{id:"piano",title:"Piano and beat",artist:"Wiki Learning Tec de Monterrey",license:"Free use",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Piano_and_beat.ogg",class:"d"}
+{id:"carefree",title:"Carefree",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Carefree.ogg",class:"a"},
+{id:"acid",title:"AcidJazz",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_AcidJazz.ogg",class:"b"},
+{id:"beat",title:"Beat electronic",artist:"beat",genre:"Elettronica",license:"Public domain",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Beat_electronic.ogg",class:"c"},
+{id:"piano",title:"Piano and beat",artist:"Wiki Learning Tec de Monterrey",genre:"Ambient",license:"Free use",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Piano_and_beat.ogg",class:"d"},
+{id:"meditation",title:"Meditation Impromptu 03",artist:"Kevin MacLeod",genre:"Ambient",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_03_-_Meditation_Impromptu_03.ogg",class:"e"},
+{id:"slowburn",title:"Slow Burn",artist:"Kevin MacLeod",genre:"Blues",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_08_-_Slow_Burn.ogg",class:"f"},
+{id:"gregorian",title:"Gregorian Chant",artist:"Kevin MacLeod",genre:"Classica",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/KevinMacLeod_-_Gregorian_Chant.ogg",class:"g"},
+{id:"radio",title:"Radio Martini",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Radio_Martini.ogg",class:"h"}
 ];
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const audio=$("#audio"), player=$("#player"), toast=$("#toast");
 let queue=[...catalog], index=0, shuffle=false, repeat=false, current=null;
-let localSongs=[], favorites=JSON.parse(localStorage.getItem("mf_favs")||"[]"), playlists=JSON.parse(localStorage.getItem("mf_playlists")||"[]"), openPlaylistId=null;
+let localSongs=[], favorites=JSON.parse(localStorage.getItem("mf_favs")||"[]"), playlists=JSON.parse(localStorage.getItem("mf_playlists")||"[]"), recent=JSON.parse(localStorage.getItem("mf_recent")||"[]"), openPlaylistId=null, activeGenre="Tutti";
 
 const dbReq=indexedDB.open("MusicaGratisDB",1);
 dbReq.onupgradeneeded=e=>e.target.result.createObjectStore("songs",{keyPath:"id"});
@@ -19,13 +23,25 @@ function getSong(id){return allSongs().find(x=>x.id===id)}
 function isFav(id){return favorites.includes(id)}
 function saveFavs(){localStorage.setItem("mf_favs",JSON.stringify(favorites))}
 function savePlaylists(){localStorage.setItem("mf_playlists",JSON.stringify(playlists))}
+function saveRecent(){localStorage.setItem("mf_recent",JSON.stringify(recent))}
 function toggleFav(item){if(isFav(item.id))favorites=favorites.filter(x=>x!==item.id);else favorites.push(item.id);saveFavs();renderAll();if(current&&current.id===item.id)$("#favNow").textContent=isFav(item.id)?"♥":"♡"}
 function actionsHTML(s, playClass="tiny"){
  return `<button class="${playClass}" onclick="playSong('${s.id}')">▶ Ascolta</button><button class="${playClass}" onclick="openPlaylistPicker('${s.id}')">＋ Playlist</button><button class="${playClass}" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button>`;
 }
-function renderCatalog(items=catalog){
+function renderGenreFilters(){
+ const genres=["Tutti",...new Set(catalog.map(s=>s.genre))];
+ $("#genreFilters").innerHTML=genres.map(g=>`<button class="chip ${g===activeGenre?"active":""}" onclick="setGenre('${esc(g)}')">${esc(g)}</button>`).join("");
+}
+window.setGenre=g=>{activeGenre=g;renderCatalog();renderGenreFilters()};
+function renderCatalog(){
+ const items=activeGenre==="Tutti"?catalog:catalog.filter(s=>s.genre===activeGenre);
  $("#catalogCount").textContent=`${items.length} brani`;
  $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("")
+}
+function renderRecent(){
+ const items=recent.map(getSong).filter(Boolean);
+ $("#recentCount").textContent=`${items.length} ${items.length===1?"brano":"brani"}`;
+ $("#recentList").innerHTML=items.length?items.map(songHTML).join(""):`<div class="empty">Qui appariranno i brani che ascolti.</div>`;
 }
 function renderLibrary(){
  $("#localCount").textContent=`${localSongs.length} ${localSongs.length===1?"brano":"brani"}`;
@@ -44,13 +60,16 @@ function renderPlaylistDetail(){
  if(!p){box.classList.add("hidden");box.innerHTML="";return}
  const songs=p.ids.map(getSong).filter(Boolean);
  box.classList.remove("hidden");
- box.innerHTML=`<div class="detailHead"><div><span>PLAYLIST</span><h3>${esc(p.name)}</h3><small>${songs.length} ${songs.length===1?"brano":"brani"}</small></div><div class="detailActions"><button class="smallBtn" onclick="playPlaylist('${p.id}')">▶ Riproduci</button><button class="dangerBtn" onclick="deletePlaylist('${p.id}')">Elimina</button></div></div>${songs.length?songs.map(s=>`<div class="song"><div class="thumb">♪</div><div class="info"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")}</span></div><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="removeFromPlaylist('${p.id}','${s.id}')">×</button></div>`).join(""):`<div class="empty">La playlist è vuota. Usa “＋ Playlist” su un brano per aggiungerlo.</div>`;
+ const rows=songs.map(s=>'<div class="song"><div class="thumb">♪</div><div class="info"><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Musica locale")+'</span></div><button class="songBtn" onclick="playSong(\''+s.id+'\')">▶</button><button class="songBtn" onclick="removeFromPlaylist(\''+p.id+'\',\''+s.id+'\')">×</button></div>').join("");
+ const empty='<div class="empty">La playlist è vuota. Usa “＋ Playlist” su un brano per aggiungerlo.</div>';
+ box.innerHTML='<div class="detailHead"><div><span>PLAYLIST</span><h3>'+esc(p.name)+'</h3><small>'+songs.length+' '+(songs.length===1?"brano":"brani")+'</small></div><div class="detailActions"><button class="smallBtn" onclick="playPlaylist(\''+p.id+'\')">▶ Riproduci</button><button class="dangerBtn" onclick="deletePlaylist(\''+p.id+'\')">Elimina</button></div></div>'+(songs.length?rows:empty);
 }
-function renderAll(){renderCatalog();renderLibrary();renderFavorites();renderPlaylists()}
+function renderAll(){renderGenreFilters();renderCatalog();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
 window.playSong=id=>{const s=getSong(id);if(s)start(s)};
 window.toggleFavoriteById=id=>{const s=getSong(id);if(s)toggleFav(s)};
 function start(s,customQueue=null){
- current=s;queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
+ current=s;
+ recent=[s.id,...recent.filter(id=>id!==s.id)].slice(0,8);saveRecent();queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
  audio.src=s.url;audio.play().catch(()=>showToast("Tocca ▶ per avviare la riproduzione"));player.classList.remove("hidden");
  $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
 }
@@ -73,7 +92,7 @@ $("#chooseBtn").onclick=()=>$("#fileInput").click();$("#addBtn").onclick=()=>$("
 $("#fileInput").onchange=e=>{if(!window.db)return;[...e.target.files].forEach(file=>{const id="local-"+crypto.randomUUID();const item={id,title:file.name.replace(/\.[^/.]+$/,""),artist:"Musica locale",blob:file};const tx=db.transaction("songs","readwrite");tx.objectStore("songs").put(item);tx.oncomplete=loadLocal});e.target.value=""};
 function loadLocal(){if(!window.db)return;const tx=db.transaction("songs","readonly"),req=tx.objectStore("songs").getAll();req.onsuccess=()=>{localSongs=req.result.map(s=>({...s,url:URL.createObjectURL(s.blob)}));renderAll()}}
 
-$("#searchInput").oninput=e=>{const q=e.target.value.toLowerCase().trim(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=out.length?out.map(songHTML).join(""):`<div class="empty">${q?"Nessun risultato.":"Scrivi un titolo o un artista per cercare."}</div>`};
+$("#searchInput").oninput=e=>{const q=e.target.value.toLowerCase().trim(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=out.length?out.map(songHTML).join(""):`<div class="empty">${q?"Nessun risultato.":"Scrivi un titolo, artista o genere per cercare."}</div>`};
 $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');$$('.page').forEach(p=>p.classList.remove('active'));$('#'+btn.dataset.page).classList.add('active')});
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
