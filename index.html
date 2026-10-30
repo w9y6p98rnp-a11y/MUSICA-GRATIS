@@ -42,6 +42,7 @@
   <section id="playlists" class="page">
     <div class="sectionHead"><h2>Playlist</h2><button id="newPlaylist" class="smallBtn">＋ Nuova</button></div>
     <div id="playlistsList" class="playlistGrid"></div>
+    <div id="playlistDetail" class="playlistDetail hidden"></div>
   </section>
 
   <section id="favorites" class="page">
@@ -76,6 +77,12 @@
   <audio id="audio" preload="metadata"></audio>
 </section>
 
+<div id="playlistPicker" class="modal hidden">
+  <div class="modalCard">
+    <div class="modalHead"><h3>Aggiungi alla playlist</h3><button id="closePicker" class="close">×</button></div>
+    <div id="playlistPickerList"></div>
+  </div>
+</div>
 <div id="toast" class="toast"></div>
 <script src="app.js"></script>
 </body>
