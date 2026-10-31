@@ -116,7 +116,7 @@ function openYouTubeSearch(q){
  const clean=String(q||'').trim();
  if(!clean){showToast('Scrivi un artista o un brano');return false}
  const url=youtubeSearchUrl(clean);
- window.location.href=url;
+ window.open(url,"_blank","noopener");
  return true;
 }
 window.openYouTubeSearch=openYouTubeSearch;
@@ -336,7 +336,8 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
+// V20: disable legacy service workers/caches so Safari cannot keep serving an old build.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("sw.js?v=19",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});
- navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
+ navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});
+ if(window.caches) caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).catch(()=>{});
 }
