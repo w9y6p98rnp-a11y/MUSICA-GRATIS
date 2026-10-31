@@ -86,44 +86,22 @@ function jamendoJsonp(params){
 async function fetchJamendoPage(query="", page=1){
  const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
  const text=String(query||'').trim();
+ let params;
  if(!text){
-   return fetchJamendoChartsPage("",page);
- }
- const low=text.toLowerCase();
- // Jamendo exposes an official trending-chart endpoint with a curated list
- // of genre tags. It is more reliable for genre discovery than treating a
- // genre as a track title search.
- if(JAMENDO_GENRES.has(low)){
-   return fetchJamendoChartsPage(low,page);
- }
- // For arbitrary text, use the documented track search fields.
- const requests=[
-   new URLSearchParams({...base,namesearch:text}),
-   new URLSearchParams({...base,artist_name:text})
- ];
- const results=await Promise.allSettled(requests.map(jamendoJsonp));
- const merged=[]; const seen=new Set(); let hadSuccess=false;
- for(const r of results){
-   if(r.status!=="fulfilled") continue;
-   hadSuccess=true;
-   const data=r.value;
-   if(data?.headers?.status==='failed') continue;
-   for(const t of (data?.results||[])){
-     const id=String(t.id||'');
-     if(id && !seen.has(id)){seen.add(id);merged.push(t)}
+   params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
+ }else{
+   const low=text.toLowerCase();
+   if(JAMENDO_GENRES.has(low)){
+     // Official Jamendo genre discovery: featured + tag + popularity boost.
+     params=new URLSearchParams({...base,featured:'1',tags:low,boost:'popularity_month'});
+   }else{
+     // Jamendo's documented free-text search covers track, album, artist,
+     // tags and similar artists. Use it first, then broaden with artist/title
+     // fields only if needed.
+     params=new URLSearchParams({...base,search:text,boost:'popularity_month'});
    }
  }
- if(!hadSuccess) throw new Error('Jamendo non disponibile');
- return {headers:{status:'success',results_count:merged.length},results:merged};
-}
-
-async function fetchJamendoChartsPage(tag="", page=1){
- const params=new URLSearchParams({
-   client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),
-   audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',order:'trending_desc'
- });
- if(tag) params.set('tag',tag);
- const data=await jamendoJsonp(new URLSearchParams(params));
+ const data=await jamendoJsonp(params);
  if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
  return data;
 }
@@ -427,23 +405,24 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V31: never reuse a browser-restored search term on startup. The first load
+// V32: never reuse a browser-restored search term on startup. The first load
 // is always a fresh catalog discovery request, so opening the app starts with
 // music immediately and does not silently search the previous query.
 const bootSearch=document.querySelector('#onlineSearchInput');
 if(bootSearch) bootSearch.value='';
 onlineQuery='';
-loadOnlineCatalog("",false);
+loadOnlineCatalog('',false);
+window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlineSearchInput'); if(el && !onlineLoading) el.value=''; });
 // V30: aggressively update the service worker without touching IndexedDB/localStorage.
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
  let reloaded=false;
- const key="mf_v30_reloaded";
+ const key="mf_v32_reloaded";
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
    if(reloaded || sessionStorage.getItem(key)==="1") return;
    reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
  });
- navigator.serviceWorker.register("./sw.js?v=30",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=32",{updateViaCache:"none"})
    .then(reg=>{ reg.update(); if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); })
    .catch(()=>{});
 }
