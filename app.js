@@ -51,23 +51,6 @@ function genreFromSubject(subject=""){
  return "Musica libera";
 }
 
-async function fetchInternetArchivePage(query="", page=1){
- const licenseClause='(licenseurl:http*publicdomain* OR licenseurl:http*cc0* OR licenseurl:http*by*)';
- const text=String(query||'').trim().replace(/[\\]/g,'').replace(/"/g,'');
- const clauses=['mediatype:audio'];
- if(text) clauses.push(`(title:"${text}" OR creator:"${text}" OR subject:"${text}")`);
- clauses.push(licenseClause);
- const params=new URLSearchParams();
- params.set('q',clauses.join(' AND '));
- ['identifier','title','creator','subject','licenseurl','rights'].forEach(f=>params.append('fl[]',f));
- params.set('rows',String(ONLINE_ROWS));
- params.set('page',String(page));
- params.set('output','json');
- const r=await fetch(`https://archive.org/advancedsearch.php?${params.toString()}`,{credentials:'omit'});
- if(!r.ok) throw new Error(`Internet Archive (${r.status})`);
- return r.json();
-}
-
 async function itemToTrack(d){
  try{
    const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
@@ -317,7 +300,9 @@ function renderCatalog(){
  if(activeArtist!=="Tutti") items=items.filter(s=>s.artist===activeArtist);
  const online=items.filter(s=>s.source==="Jamendo"||s.source==="Internet Archive");
  const local=items.filter(s=>s.source!=="Jamendo"&&s.source!=="Internet Archive");
- $("#catalogCount").textContent=`${items.length} brani`;
+ // catalogCount belonged to an older layout; V37 keeps online/local counts separate.
+ const legacyCount=$("#catalogCount");
+ if(legacyCount) legacyCount.textContent=`${items.length} brani`;
  const card=s=>`<article class="card ${s.source?"onlineCard":"localCard"}">
    <div class="art ${s.class||""}" ${s.image?`style="background-image:linear-gradient(180deg,transparent 35%,rgba(0,0,0,.72)),url('${esc(s.image)}')"`:""}>${s.image?"":"MUSICA LIBERA"}</div>
    <div class="cardTitle">${esc(s.title)}</div>
