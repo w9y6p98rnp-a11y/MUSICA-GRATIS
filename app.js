@@ -20,7 +20,13 @@ let onlineLoading=false;
 let onlinePage=1;
 let onlineHasMore=true;
 let onlineQuery="";
+let jamendoPage=0;
+let iaPage=0;
 const ONLINE_ROWS=12;
+const JAMENDO_ROWS=12;
+// Jamendo publishes a documented read-only test client id for quick API tests.
+// Replace this with your own client id before any public/commercial rollout.
+const JAMENDO_CLIENT_ID="709fa152";
 
 function licenseLabel(v=""){
  const t=String(v).toLowerCase();
@@ -30,7 +36,7 @@ function licenseLabel(v=""){
  return v ? String(v).split(/[;,]/)[0] : "Licenza da verificare";
 }
 
-async function fetchOnlinePage(query="", page=1){
+async function fetchInternetArchivePage(query="", page=1){
  const licenseClause='(licenseurl:http*publicdomain* OR licenseurl:http*cc0* OR licenseurl:http*by*)';
  const text=String(query||'').trim().replace(/[\\]/g,'').replace(/"/g,'');
  const clauses=['mediatype:audio'];
@@ -43,7 +49,7 @@ async function fetchOnlinePage(query="", page=1){
  params.set('page',String(page));
  params.set('output','json');
  const r=await fetch(`https://archive.org/advancedsearch.php?${params.toString()}`,{credentials:'omit'});
- if(!r.ok) throw new Error(`catalogo non disponibile (${r.status})`);
+ if(!r.ok) throw new Error(`Internet Archive (${r.status})`);
  return r.json();
 }
 
@@ -61,40 +67,77 @@ async function itemToTrack(d){
  }catch(e){return null}
 }
 
+async function fetchJamendoPage(query="", page=1){
+ const params=new URLSearchParams({client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'});
+ const text=String(query||'').trim();
+ if(text) params.set('search',text);
+ else {params.set('featured','1');params.set('boost','popularity_month');}
+ const r=await fetch(`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`,{credentials:'omit'});
+ if(!r.ok) throw new Error(`Jamendo (${r.status})`);
+ const data=await r.json();
+ if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
+ return data;
+}
+
+function jamendoGenre(t){
+ const tags=t?.musicinfo?.tags||{};
+ const vals=[...(tags.genres||[]),...(tags.instruments||[]),...(tags.vartags||[])].filter(Boolean);
+ return genreFromSubject(vals.join(' '));
+}
+
+function jamendoToTrack(t){
+ const lic=licenseLabel(t.license_ccurl||'Creative Commons');
+ return {id:`jamendo-${t.id}`,title:t.name||'Brano senza titolo',artist:t.artist_name||'Artista indipendente',genre:jamendoGenre(t),album:t.album_name||'Jamendo',license:lic,url:t.audio,image:t.image||t.album_image||'',class:`online-${Math.floor(Math.random()*6)}`,source:'Jamendo',sourceUrl:t.shareurl||`https://www.jamendo.com/track/${t.id}`,licenseUrl:t.license_ccurl||''};
+}
+
 async function loadOnlineCatalog(query="", append=true){
  if(onlineLoading)return;
  onlineLoading=true;
- const page=query!==onlineQuery?1:onlinePage;
- if(query!==onlineQuery){onlineQuery=query;onlinePage=1;onlineHasMore=true;catalog=catalog.filter(s=>!s.source||s.source!=='Internet Archive');}
- showToast(query?`Cerco “${query}”…`:'Carico musica online…');
- if($('#onlineStatus')) $('#onlineStatus').textContent='Cerco musica libera nel catalogo online…';
+ if(query!==onlineQuery){onlineQuery=query;jamendoPage=0;iaPage=0;onlinePage=1;onlineHasMore=true;catalog=catalog.filter(s=>s.source!=='Jamendo'&&s.source!=='Internet Archive');}
+ const nextJamendo=jamendoPage+1;
+ const nextIA=iaPage+1;
+ showToast(query?`Cerco “${query}”…`:'Carico tanta musica libera…');
+ if($('#onlineStatus')) $('#onlineStatus').textContent=query?`Cerco “${esc(query)}” su Jamendo e Internet Archive…`:'Carico musica da Jamendo e Internet Archive…';
  try{
-   const data=await fetchOnlinePage(query,page);
-   const docs=data?.response?.docs||[];
+   const [jamRes,iaRes]=await Promise.allSettled([fetchJamendoPage(query,nextJamendo),fetchInternetArchivePage(query,nextIA)]);
    const fresh=[];
-   // Pochi metadati alla volta: su iPhone evitiamo troppe richieste contemporanee.
-   for(let i=0;i<docs.length;i+=4){
-     const batch=await Promise.all(docs.slice(i,i+4).map(itemToTrack));
-     fresh.push(...batch.filter(Boolean));
+   let jamCount=0,iaCount=0;
+   if(jamRes.status==='fulfilled'){
+     const rows=jamRes.value?.results||[];
+     fresh.push(...rows.map(jamendoToTrack));
+     jamCount=rows.length;
+     jamendoPage=nextJamendo;
+   }
+   if(iaRes.status==='fulfilled'){
+     const docs=iaRes.value?.response?.docs||[];
+     for(let i=0;i<docs.length;i+=4){
+       const batch=await Promise.all(docs.slice(i,i+4).map(itemToTrack));
+       fresh.push(...batch.filter(Boolean));
+     }
+     iaCount=docs.length;
+     iaPage=nextIA;
    }
    const ids=new Set(catalog.map(x=>x.id));
    catalog.push(...fresh.filter(x=>!ids.has(x.id)));
-   onlinePage=page+1;
-   onlineHasMore=docs.length===ONLINE_ROWS;
+   onlinePage++;
+   onlineHasMore=(jamCount===JAMENDO_ROWS)||(iaCount===ONLINE_ROWS);
    renderAll();
    if($('#onlineStatus')){
      if(fresh.length){
-       $('#onlineStatus').innerHTML=`${fresh.length} nuovi brani trovati online${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Puoi caricarne altri.':''}`;
+       const parts=[];
+       if(jamCount) parts.push(`${jamCount} Jamendo`);
+       if(iaCount) parts.push(`${iaCount} Internet Archive`);
+       $('#onlineStatus').innerHTML=`${fresh.length} nuovi brani: ${parts.join(' + ')}${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Premi “＋ Carica altri” per continuare.':''}`;
      }else if(query){
        $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b><br><span>Puoi cercare subito il brano su YouTube.</span><br><button type="button" class="smallBtn primary fallbackYoutube" data-query="${esc(query)}">▶ Cerca “${esc(query)}” su YouTube</button>`;
      }else{
-       $('#onlineStatus').innerHTML='Nessun nuovo brano trovato nel catalogo libero. Prova un artista, un titolo o un genere.';
+       $('#onlineStatus').textContent='I cataloghi online non hanno restituito nuovi brani. Riprova tra poco.';
      }
    }
    showToast(fresh.length?`${fresh.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
  }catch(e){
-   if($('#onlineStatus')) $('#onlineStatus').textContent='Catalogo online temporaneamente non disponibile. La libreria locale continua a funzionare.';
-   showToast('Catalogo online non disponibile');
+   if($('#onlineStatus')) $('#onlineStatus').textContent='Cataloghi online temporaneamente non disponibili. La libreria locale continua a funzionare.';
+   showToast('Cataloghi online non disponibili');
  }finally{onlineLoading=false;updateOnlineButtons()}
 }
 
@@ -106,7 +149,6 @@ function updateOnlineButtons(){
 window.searchOnline=()=>{
  const input=document.querySelector('#onlineSearchInput');
  const q=(input?.value||'').trim();
- if(!q){showToast('Scrivi un artista, un brano o un genere'); input?.focus(); return}
  loadOnlineCatalog(q,false);
 };
 window.loadMoreOnline=()=>{if(onlineHasMore&&!onlineLoading)loadOnlineCatalog(onlineQuery,true)};
@@ -336,9 +378,11 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V24: register the current service worker and force an update check without destroying offline storage.
+// V26: preload a first batch from both open music catalogs.
+setTimeout(()=>loadOnlineCatalog("",false),350);
+// V26: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=24",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=26",{updateViaCache:"none"})
    .then(reg=>reg.update())
    .catch(()=>{});
 }

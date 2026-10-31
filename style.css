@@ -59,7 +59,7 @@
 .youtubeCard a{text-decoration:none}
 .searchActions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
 
-/* V25: modern iPhone search field */
+/* V26: modern iPhone search field + online catalog */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,button,textarea,select{font-family:inherit}
 input[type="text"],input[type="search"],input[type="email"],input[type="url"],input[type="tel"],textarea{font-size:18px !important;-webkit-appearance:none;appearance:none}

@@ -1,8 +1,8 @@
-# Musica Gratis V25
+# Musica Gratis V26
 
 PWA per GitHub Pages.
 
-## V25
+## V26
 - Service worker corretto e versionato v22.
 - Aggiornamento del service worker con `updateViaCache: none` e `registration.update()`.
 - Eliminazione automatica delle vecchie cache in `activate`.
@@ -13,4 +13,8 @@ PWA per GitHub Pages.
 Il catalogo online contiene solo contenuti compatibili con i filtri di licenza impostati nell'app. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
 
 
-V25: redesigned online search field for iPhone, 16px input sizing to avoid Safari focus zoom, and updated service-worker cache version.
+V26: redesigned online search field for iPhone, 16px input sizing to avoid Safari focus zoom, and updated service-worker cache version.
+
+
+## V26
+V26 integra due cataloghi musicali online: Jamendo e Internet Archive. La prima apertura carica automaticamente una selezione, la ricerca interroga entrambe le fonti e “Carica altri” continua la paginazione. Jamendo richiede un Client ID: questa build usa temporaneamente il Client ID pubblico di test documentato da Jamendo; prima di una pubblicazione stabile va sostituito con un Client ID proprio.
