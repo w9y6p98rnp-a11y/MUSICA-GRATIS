@@ -249,7 +249,7 @@ function updateOnlineButtons(){
 }
 
 window.searchOnline=()=>{
- const input=document.querySelector('#onlineSearchInput');
+ const input=document.querySelector('#searchInput');
  const q=(input?.value||'').trim();
  loadOnlineCatalog(q,false);
 };
@@ -265,7 +265,7 @@ function openYouTubeSearch(q){
 }
 window.openYouTubeSearch=openYouTubeSearch;
 window.searchYouTube=()=>{
- const q=(document.querySelector('#youtubeSearchInput')?.value||'').trim();
+ const q=(document.querySelector('#searchInput')?.value||'').trim();
  if(!q){showToast('Scrivi un artista o un brano');return}
  const box=document.querySelector('#youtubeSearchResults');
  if(box) box.innerHTML=`<div class="youtubeCard"><div class="youtubeIcon">▶</div><div><b>Ricerca YouTube</b><span>Apri i risultati ufficiali per “${esc(q)}”</span></div><button class="smallBtn primary" type="button" onclick="openYouTubeSearch(${JSON.stringify(q)})">Apri YouTube</button></div>`;
@@ -496,7 +496,7 @@ $("#chooseBtn").onclick=()=>$("#fileInput").click();$("#addBtn").onclick=()=>$("
 $("#fileInput").onchange=e=>{if(!window.db)return;[...e.target.files].forEach(file=>{const id="local-"+crypto.randomUUID();const item={id,title:file.name.replace(/\.[^/.]+$/,""),artist:"Musica locale",genre:"Locale",class:"local",blob:file};const tx=db.transaction("songs","readwrite");tx.objectStore("songs").put(item);tx.oncomplete=loadLocal});e.target.value=""};
 function loadLocal(){if(!window.db)return;const tx=db.transaction("songs","readonly"),req=tx.objectStore("songs").getAll();req.onsuccess=()=>{localSongs=req.result.map(s=>({...s,url:URL.createObjectURL(s.blob)}));renderAll()}}
 
-$("#searchInput").oninput=e=>{const raw=e.target.value.trim(),q=raw.toLowerCase(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=raw?`<div class="searchActions"><button class="smallBtn" onclick="document.querySelector('#youtubeSearchInput').value=${JSON.stringify(raw)};searchYouTube()">▶ Cerca “${esc(raw)}” su YouTube</button><button class="smallBtn" onclick="document.querySelector('#onlineSearchInput').value=${JSON.stringify(raw)};searchOnline()">🔎 Cerca nel catalogo libero</button></div>`+(out.length?out.map(songHTML).join(""):`<div class="empty">Nessun risultato locale.</div>`):`<div class="empty">Scrivi un titolo, artista o genere per cercare.</div>`};
+$("#searchInput").oninput=e=>{const raw=e.target.value.trim(),q=raw.toLowerCase(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=raw?(out.length?`<div class="searchSectionLabel">Nella tua libreria</div>`+out.map(songHTML).join(""):`<div class="empty">Nessun risultato nella tua libreria.</div>`):`<div class="empty">Scrivi un titolo, artista o genere per cercare.</div>`};
 $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');$$('.page').forEach(p=>p.classList.remove('active'));$('#'+btn.dataset.page).classList.add('active')});
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
@@ -514,11 +514,11 @@ updateOnlineButtons();
 // V32: never reuse a browser-restored search term on startup. The first load
 // is always a fresh catalog discovery request, so opening the app starts with
 // music immediately and does not silently search the previous query.
-const bootSearch=document.querySelector('#onlineSearchInput');
+const bootSearch=document.querySelector('#searchInput');
 if(bootSearch) bootSearch.value='';
 onlineQuery='';
 loadOnlineCatalog('',false);
-window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlineSearchInput'); if(el && !onlineLoading) el.value=''; });
+window.addEventListener('pageshow',()=>{ const el=document.querySelector('#searchInput'); if(el && !onlineLoading) el.value=''; });
 // V36: aggressively update the service worker without touching IndexedDB/localStorage.
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){

@@ -35,7 +35,8 @@
     <div id="continueList" class="horizontalList"></div>
 
     <div class="sectionHead"><h2>Musica online</h2><span id="onlineCount">0 brani</span></div>
-    <div class="onlineTools"><label class="onlineSearchBox" for="onlineSearchInput"><span class="searchIcon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="M16 16l5 5"></path></svg></span><input id="onlineSearchInput" type="search" inputmode="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Cerca artista o brano…"></label><div class="onlineSearchActions"><button id="searchOnlineBtn" class="primary smallBtn" onclick="searchOnline()">Cerca catalogo</button><button id="loadMoreOnline" class="smallBtn" onclick="loadMoreOnline()">＋ Carica altri</button></div></div><div id="onlineStatus" class="onlineStatus">Caricamento automatico della musica online…</div>
+    <div id="onlineStatus" class="onlineStatus">Caricamento automatico della musica online…</div>
+    <div class="onlineMore"><button id="loadMoreOnline" class="smallBtn" onclick="loadMoreOnline()">＋ Carica altri</button></div>
     <div id="genreFilters" class="chips"></div>
     <div id="onlineSection"><div id="onlineCatalog" class="cards"></div></div>
     <div id="localSection" class="hidden"><div class="sectionHead"><h2>Catalogo locale</h2><span id="localCountHome"></span></div><div id="localCatalog" class="cards"></div></div>
@@ -61,8 +62,10 @@
 
   <section id="search" class="page">
     <h2>Cerca musica</h2>
-    <div class="searchbox"><span>⌕</span><input id="searchInput" placeholder="Cerca brano o artista"></div>
-    <div class="onlineTools youtubeTools"><input id="youtubeSearchInput" placeholder="Cerca qualsiasi brano su YouTube…"><button id="youtubeSearchBtn" class="primary smallBtn" onclick="searchYouTube()">▶ Cerca su YouTube</button></div><div class="onlineStatus">La ricerca apre YouTube ufficiale. Nessuna API, nessun abbonamento e nessun download dei brani.</div><div id="youtubeSearchResults" class="list"></div><div id="searchResults" class="list"></div>
+    <div class="searchbox"><span>⌕</span><input id="searchInput" type="search" inputmode="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Cerca brano, artista o genere…"></div>
+    <div class="searchActions searchMainActions"><button id="searchOnlineBtn" class="primary smallBtn" onclick="searchOnline()">🔎 Cerca musica</button><button id="youtubeSearchBtn" class="smallBtn" onclick="searchYouTube()">▶ Cerca su YouTube</button></div>
+    <div class="onlineStatus">Una sola ricerca: prima controlla la tua libreria e poi puoi cercare nel catalogo libero o su YouTube.</div>
+    <div id="youtubeSearchResults" class="list"></div><div id="searchResults" class="list"></div>
   </section>
 
   <section id="playlists" class="page">
