@@ -33,9 +33,13 @@ I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Ve
 Pagina dettaglio del brano con copertina, artista, genere, licenza e azioni rapide: riproduci, aggiungi alla coda, preferiti e playlist.
 
 
-## V9
+## V10
 - Pagina dedicata agli artisti
 - Profilo artista con numero di brani e generi
 - Riproduci tutto per artista
 - Elenco completo dei brani dell'artista
 - Accesso rapido a dettaglio brano, coda e preferiti
+
+
+## V10
+Home personalizzata con saluto dinamico, continua ad ascoltare, preferiti in evidenza e mix per genere.

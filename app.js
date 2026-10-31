@@ -53,6 +53,23 @@ window.setArtist=a=>{activeArtist=a;renderCatalog();renderArtists();showToast(a=
 function coverClass(s){return s&&s.class?`art ${s.class}`:"art local"}
 function coverLetter(s){return s&&s.title?s.title.slice(0,1).toUpperCase():"♪"}
 
+function greeting(){const h=new Date().getHours();return h<5?"ANCORA SVEGLIO?":h<12?"BUONGIORNO":h<18?"BUON POMERIGGIO":"BUONASERA"}
+function renderPersonalHome(){
+ const recentItems=recent.map(getSong).filter(Boolean);
+ const favItems=allSongs().filter(x=>isFav(x.id)).slice(0,5);
+ $("#timeGreeting").textContent=greeting();
+ $("#listeningCount").textContent=recent.length;
+ $("#personalTitle").textContent=recentItems.length?"Bentornato nella tua musica":"Inizia il tuo viaggio musicale";
+ $("#personalSubtitle").textContent=recentItems.length?"Riprendi da dove avevi lasciato o lasciati sorprendere.":"Aggiungi brani, crea playlist e costruisci la tua libreria.";
+ $("#continueCount").textContent=recentItems.length?(recentItems.length+" "+(recentItems.length===1?"brano":"brani")+":"):"";
+ $("#continueList").innerHTML=recentItems.length?recentItems.slice(0,6).map(s=>'<button class="continueCard" onclick="playSong(\''+s.id+'\')"><div class="continueCover '+(s["class"]||"local")+'">▶</div><div><b>'+esc(s.title)+'</b><span>'+esc(s.artist||"Musica locale")+'</span></div></button>').join(""): '<div class="empty">Ascolta un brano e lo ritroverai qui.</div>';
+ $("#favoriteHomeCount").textContent=favItems.length?(favItems.length+" "+(favItems.length===1?"brano":"brani")):"";
+ $("#favoriteHome").innerHTML=favItems.length?favItems.map(songHTML).join(""):`<div class="empty">Non hai ancora aggiunto preferiti.</div>`;
+ const genres=[...new Set(catalog.map(s=>s.genre))];
+ $("#genreMixes").innerHTML=genres.map((g,i)=>{const songs=catalog.filter(s=>s.genre===g);return '<button class="mixCard mix-'+(i%6)+'" onclick="playGenre(\''+encodeURIComponent(g)+'\')"><div class="mixArt"><span>♫</span></div><div><b>'+esc(g)+'</b><small>'+songs.length+' '+(songs.length===1?"brano":"brani")+'</small></div><strong>▶</strong></button>';}).join("");
+}
+window.playGenre=encoded=>{const genre=decodeURIComponent(encoded);const songs=catalog.filter(s=>s.genre===genre);if(!songs.length)return;queue=songs;index=0;start(songs[0],songs);showToast(`Mix ${genre}`)};
+
 function renderRecent(){
  const items=recent.map(getSong).filter(Boolean);
  $("#recentCount").textContent=`${items.length} ${items.length===1?"brano":"brani"}`;
@@ -79,7 +96,7 @@ function renderPlaylistDetail(){
  const empty='<div class="empty">La playlist è vuota. Usa “＋ Playlist” su un brano per aggiungerlo.</div>';
  box.innerHTML='<div class="detailHead"><div><span>PLAYLIST</span><h3>'+esc(p.name)+'</h3><small>'+songs.length+' '+(songs.length===1?"brano":"brani")+'</small></div><div class="detailActions"><button class="smallBtn" onclick="playPlaylist(\''+p.id+'\')">▶ Riproduci</button><button class="dangerBtn" onclick="deletePlaylist(\''+p.id+'\')">Elimina</button></div></div>'+(songs.length?rows:empty);
 }
-function renderAll(){renderGenreFilters();renderCatalog();renderArtists();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
+function renderAll(){renderPersonalHome();renderGenreFilters();renderCatalog();renderArtists();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
 window.openTrackDetail=id=>{
  const s=getSong(id); if(!s)return;
  const fav=isFav(id);
