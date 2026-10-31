@@ -248,10 +248,31 @@ function updateOnlineButtons(){
  const search=$('#searchOnlineBtn'); if(search) search.disabled=onlineLoading;
 }
 
-window.searchOnline=()=>{
+function renderUnifiedSearchResults(q){
+ const box=document.querySelector('#searchResults');
+ if(!box) return;
+ const raw=String(q||'').trim();
+ if(!raw){
+   box.innerHTML=`<div class="empty">Scrivi un titolo, artista o genere per cercare.</div>`;
+   return;
+ }
+ const low=raw.toLowerCase();
+ const out=allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(low));
+ const local=out.filter(s=>!s.source);
+ const online=out.filter(s=>s.source==='Jamendo'||s.source==='Internet Archive');
+ let html='';
+ if(local.length) html+=`<div class="searchSectionLabel">Nella tua libreria</div>`+local.map(songHTML).join('');
+ if(online.length) html+=`<div class="searchSectionLabel">Risultati online · ${online.length}</div>`+online.map(songHTML).join('');
+ box.innerHTML=html||`<div class="empty">Nessun risultato ancora. Prova un altro artista o brano.</div>`;
+}
+
+window.searchOnline=async()=>{
  const input=document.querySelector('#searchInput');
  const q=(input?.value||'').trim();
- loadOnlineCatalog(q,false);
+ if(!q){showToast('Scrivi un artista o un brano');renderUnifiedSearchResults('');return}
+ await loadOnlineCatalog(q,false);
+ renderUnifiedSearchResults(q);
+ document.querySelector('#searchResults')?.scrollIntoView({behavior:'smooth',block:'start'});
 };
 window.loadMoreOnline=()=>{if(onlineHasMore&&!onlineLoading)loadOnlineCatalog(onlineQuery,true)};
 
@@ -496,7 +517,8 @@ $("#chooseBtn").onclick=()=>$("#fileInput").click();$("#addBtn").onclick=()=>$("
 $("#fileInput").onchange=e=>{if(!window.db)return;[...e.target.files].forEach(file=>{const id="local-"+crypto.randomUUID();const item={id,title:file.name.replace(/\.[^/.]+$/,""),artist:"Musica locale",genre:"Locale",class:"local",blob:file};const tx=db.transaction("songs","readwrite");tx.objectStore("songs").put(item);tx.oncomplete=loadLocal});e.target.value=""};
 function loadLocal(){if(!window.db)return;const tx=db.transaction("songs","readonly"),req=tx.objectStore("songs").getAll();req.onsuccess=()=>{localSongs=req.result.map(s=>({...s,url:URL.createObjectURL(s.blob)}));renderAll()}}
 
-$("#searchInput").oninput=e=>{const raw=e.target.value.trim(),q=raw.toLowerCase(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=raw?(out.length?`<div class="searchSectionLabel">Nella tua libreria</div>`+out.map(songHTML).join(""):`<div class="empty">Nessun risultato nella tua libreria.</div>`):`<div class="empty">Scrivi un titolo, artista o genere per cercare.</div>`};
+$("#searchInput").oninput=e=>{renderUnifiedSearchResults(e.target.value);};
+$("#searchInput").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();searchOnline();}};
 $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');$$('.page').forEach(p=>p.classList.remove('active'));$('#'+btn.dataset.page).classList.add('active')});
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
@@ -519,11 +541,11 @@ if(bootSearch) bootSearch.value='';
 onlineQuery='';
 loadOnlineCatalog('',false);
 window.addEventListener('pageshow',()=>{ const el=document.querySelector('#searchInput'); if(el && !onlineLoading) el.value=''; });
-// V36: aggressively update the service worker without touching IndexedDB/localStorage.
+// V40: aggressively update the service worker without touching IndexedDB/localStorage.
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
  let reloaded=false;
- const key="mf_v36_reloaded";
+ const key="mf_v40_reloaded";
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
    if(reloaded || sessionStorage.getItem(key)==="1") return;
    reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
