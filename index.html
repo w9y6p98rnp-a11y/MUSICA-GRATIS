@@ -8,11 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
-<title>Musica Gratis V21</title>
+<title>Musica Gratis V22</title>
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span>♪</span> Musica Gratis <small style="opacity:.45;font-size:10px">V21</small></div>
+  <div class="brand"><span>♪</span> Musica Gratis <small style="opacity:.45;font-size:10px">V22</small></div>
   <button id="addBtn" class="round">＋</button>
   <input id="fileInput" type="file" accept="audio/*" multiple hidden>
 </header>
@@ -34,7 +34,7 @@
     <div class="sectionHead"><h2>Continua ad ascoltare</h2><span id="continueCount"></span></div>
     <div id="continueList" class="horizontalList"></div>
 
-    <div class="sectionHead"><h2>Scelti per te</h2><span id="catalogCount"></span></div><div class="onlineTools"><input id="onlineSearchInput" placeholder="Cerca musica online…"><button id="searchOnlineBtn" class="primary smallBtn" onclick="searchOnline()">🔎 Cerca online</button><button id="loadMoreOnline" class="smallBtn" onclick="loadMoreOnline()">＋ Carica altri</button></div><div id="onlineStatus" class="onlineStatus">Catalogo online pronto: premi “Cerca online” per aggiungere musica.</div>
+    <div class="sectionHead"><h2>Scelti per te</h2><span id="catalogCount"></span></div><div class="onlineTools"><div class="onlineSearchBox"><span>⌕</span><input id="onlineSearchInput" type="search" inputmode="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Cerca artista o brano…"></div><button id="searchOnlineBtn" class="primary smallBtn" onclick="searchOnline()">Cerca online</button><button id="loadMoreOnline" class="smallBtn" onclick="loadMoreOnline()">＋ Carica altri</button></div><div id="onlineStatus" class="onlineStatus">Catalogo online pronto: premi “Cerca online” per aggiungere musica.</div>
     <div id="genreFilters" class="chips"></div>
     <div id="catalog" class="cards"></div>
 
@@ -138,6 +138,6 @@
   </div>
 </div>
 <div id="toast" class="toast"></div>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

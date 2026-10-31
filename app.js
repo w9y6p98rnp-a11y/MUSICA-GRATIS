@@ -336,9 +336,9 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V21: register the current service worker and force an update check without destroying offline storage.
+// V22: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=21",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=22",{updateViaCache:"none"})
    .then(reg=>reg.update())
    .catch(()=>{});
 }
