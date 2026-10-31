@@ -83,13 +83,34 @@ function jamendoJsonp(params){
 }
 
 async function fetchJamendoPage(query="", page=1){
- const params=new URLSearchParams({client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'});
+ const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
  const text=String(query||'').trim();
- if(text) params.set('search',text);
- else {params.set('featured','1');params.set('boost','popularity_month');}
- const data=await jamendoJsonp(params);
- if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
- return data;
+ if(!text){
+   const params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
+   const data=await jamendoJsonp(params);
+   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
+   return data;
+ }
+ // Jamendo does not have a generic "search" parameter. Use its documented
+ // search fields so artist/title/genre queries actually return results.
+ const requests=[
+   new URLSearchParams({...base,namesearch:text}),
+   new URLSearchParams({...base,artist_name:text}),
+   new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
+ ];
+ const results=await Promise.allSettled(requests.map(jamendoJsonp));
+ const merged=[]; const seen=new Set(); let hadSuccess=false;
+ for(const r of results){
+   if(r.status!=='fulfilled') continue;
+   hadSuccess=true;
+   const data=r.value;
+   if(data?.headers?.status==='failed') continue;
+   for(const t of (data?.results||[])){
+     if(!seen.has(String(t.id))){seen.add(String(t.id));merged.push(t)}
+   }
+ }
+ if(!hadSuccess) throw new Error('Jamendo non disponibile');
+ return {headers:{status:'success',results_count:merged.length},results:merged};
 }
 
 function jamendoGenre(t){
@@ -391,9 +412,9 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V27: preload a first batch from both open music catalogs.
+// V28: preload a first batch from both open music catalogs.
 setTimeout(()=>loadOnlineCatalog("",false),350);
-// V27: register the current service worker and force an update check without destroying offline storage.
+// V28: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
  navigator.serviceWorker.register("./sw.js?v=26",{updateViaCache:"none"})
    .then(reg=>reg.update())
