@@ -23,10 +23,11 @@ let onlineQuery="";
 let jamendoPage=0;
 let iaPage=0;
 const ONLINE_ROWS=16;
-const JAMENDO_ROWS=40;
-// Jamendo publishes a documented read-only test client id for quick API tests.
-// Replace this with your own client id before any public/commercial rollout.
-const JAMENDO_CLIENT_ID="942744d2";
+const JAMENDO_ROWS=80;
+// Primary application id + official Jamendo read-only test id as a fallback.
+// The fallback is useful when a newly-created application id is not yet accepted
+// by the API edge. The official docs document 709fa152 for read-only testing.
+const JAMENDO_CLIENT_IDS=["942744d2","709fa152"];
 const JAMENDO_GENRES=new Set(["punk","pop","rock","electronic","hiphop","jazz","indie","soundtrack","classical","dance","chillout","ambient","folk","metal","latino","funk","rnb","reggae","country","house","emotional","energetic","romance","sad","world","blues","happy"]);
 
 function licenseLabel(v=""){
@@ -81,63 +82,107 @@ async function itemToTrack(d){
  }catch(e){return null}
 }
 
-function jamendoJsonp(params){
+function withTimeout(promise,ms=10000){
+ return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error("Timeout di rete")),ms))]);
+}
+
+function jamendoJsonp(params,timeout=9000){
  return new Promise((resolve,reject)=>{
    const cb=`mfJamendo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
    const script=document.createElement('script');
    let done=false;
-   const cleanup=()=>{done=true;try{delete window[cb]}catch{};script.remove();clearTimeout(timer)};
-   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},12000);
+   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},timeout);
+   const cleanup=()=>{done=true;clearTimeout(timer);try{delete window[cb]}catch{};script.remove()};
    window[cb]=data=>{if(done)return;cleanup();resolve(data)};
    script.onerror=()=>{if(done)return;cleanup();reject(new Error('Jamendo non disponibile'))};
    params.set('callback',cb);
+   script.async=true;
    script.src=`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`;
    document.head.appendChild(script);
  });
 }
 
+async function fetchJamendoWithClient(params){
+ let last=null;
+ for(const clientId of JAMENDO_CLIENT_IDS){
+   try{
+     const p=new URLSearchParams(params);
+     p.set('client_id',clientId);
+     const data=await jamendoJsonp(p);
+     if(data?.headers?.status==='failed'){
+       last=new Error(data.headers.error_message||`Jamendo errore ${data.headers.code||''}`.trim());
+       continue;
+     }
+     return data;
+   }catch(e){last=e}
+ }
+ throw last||new Error('Jamendo non disponibile');
+}
+
 async function fetchJamendoPage(query="", page=1){
- const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
- const text=String(query||"").trim();
+ const base={format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
+ const text=String(query||'').trim();
  if(!text){
-   const params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
-   const data=await jamendoJsonp(params);
-   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||`Jamendo error ${data.headers.code||''}`.trim());
-   return data;
+   return fetchJamendoWithClient(new URLSearchParams({...base,featured:'1',boost:'popularity_month'}));
  }
  const low=text.toLowerCase();
  if(JAMENDO_GENRES.has(low)){
-   const params=new URLSearchParams({...base,featured:'1',tags:low,boost:'popularity_month'});
-   const data=await jamendoJsonp(params);
-   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||`Jamendo error ${data.headers.code||''}`.trim());
-   return data;
+   return fetchJamendoWithClient(new URLSearchParams({...base,featured:'1',tags:low,boost:'popularity_month'}));
  }
- // Jamendo documents search as a free-text search across track, album,
- // artist and tags. Fall back to dedicated name/artist/tag searches if it
- // returns no rows, while keeping one combined page for the UI.
  const searchParams=new URLSearchParams({...base,search:text,boost:'popularity_month'});
- const first=await jamendoJsonp(searchParams);
- if(first?.headers?.status==='failed') throw new Error(first.headers.error_message||`Jamendo error ${first.headers.code||''}`.trim());
+ const first=await fetchJamendoWithClient(searchParams);
  if((first?.results||[]).length) return first;
  const requests=[
    new URLSearchParams({...base,namesearch:text}),
    new URLSearchParams({...base,artist_name:text}),
    new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
  ];
- const results=await Promise.allSettled(requests.map(jamendoJsonp));
+ const results=await Promise.allSettled(requests.map(fetchJamendoWithClient));
  const merged=[]; const seen=new Set(); let ok=false;
  for(const r of results){
    if(r.status!=='fulfilled') continue;
    ok=true;
-   const data=r.value;
-   if(data?.headers?.status==='failed') continue;
-   for(const t of (data?.results||[])){
+   for(const t of (r.value?.results||[])){
      const id=String(t.id);
      if(!seen.has(id)){seen.add(id);merged.push(t)}
    }
  }
  if(!ok) throw new Error('Jamendo non disponibile');
  return {headers:{status:'success',code:0,error_message:'',results_count:merged.length},results:merged};
+}
+
+async function fetchInternetArchivePage(query="", page=1){
+ const text=String(query||'').trim().replace(/[\\]/g,'').replace(/"/g,'');
+ const clauses=['mediatype:audio'];
+ // Keep discovery broad; itemToTrack verifies the actual file/license metadata.
+ if(text) clauses.push(`(title:"${text}" OR creator:"${text}" OR subject:"${text}")`);
+ const params=new URLSearchParams();
+ params.set('q',clauses.join(' AND '));
+ ['identifier','title','creator','subject','licenseurl','rights'].forEach(f=>params.append('fl[]',f));
+ params.set('rows',String(ONLINE_ROWS*2));
+ params.set('page',String(page));
+ params.set('output','json');
+ const url=`https://archive.org/advancedsearch.php?${params.toString()}`;
+ const r=await withTimeout(fetch(url,{mode:'cors',credentials:'omit',cache:'no-store'}),10000);
+ if(!r.ok) throw new Error(`Internet Archive (${r.status})`);
+ return r.json();
+}
+
+async function loadInternetArchiveTracks(query,page){
+ const maxAttempts=3;
+ let currentPage=page;
+ const out=[];
+ for(let attempt=0;attempt<maxAttempts && out.length<ONLINE_ROWS;attempt++,currentPage++){
+   const data=await fetchInternetArchivePage(query,currentPage);
+   const docs=data?.response?.docs||[];
+   if(!docs.length) break;
+   for(let i=0;i<docs.length;i+=4){
+     const batch=await Promise.all(docs.slice(i,i+4).map(itemToTrack));
+     out.push(...batch.filter(Boolean));
+     if(out.length>=ONLINE_ROWS) break;
+   }
+ }
+ return {tracks:out,page:currentPage-1};
 }
 
 function jamendoGenre(t){
@@ -160,44 +205,47 @@ async function loadOnlineCatalog(query="", append=true){
  showToast(query?`Cerco “${query}”…`:'Carico tanta musica libera…');
  if($('#onlineStatus')) $('#onlineStatus').textContent=query?`Cerco “${esc(query)}” su Jamendo e Internet Archive…`:'Carico musica online…';
  try{
-   const [jamRes,iaRes]=await Promise.allSettled([fetchJamendoPage(query,nextJamendo),fetchInternetArchivePage(query,nextIA)]);
+   const jamPromise=fetchJamendoPage(query,nextJamendo);
+   const iaPromise=loadInternetArchiveTracks(query,nextIA);
+   const [jamRes,iaRes]=await Promise.allSettled([jamPromise,iaPromise]);
    const fresh=[];
    let jamCount=0,iaCount=0;
+   const errors=[];
    if(jamRes.status==='fulfilled'){
      const rows=jamRes.value?.results||[];
      fresh.push(...rows.map(jamendoToTrack));
      jamCount=rows.length;
      jamendoPage=nextJamendo;
-   }
+   }else errors.push(`Jamendo: ${jamRes.reason?.message||'errore'}`);
    if(iaRes.status==='fulfilled'){
-     const docs=iaRes.value?.response?.docs||[];
-     for(let i=0;i<docs.length;i+=4){
-       const batch=await Promise.all(docs.slice(i,i+4).map(itemToTrack));
-       fresh.push(...batch.filter(Boolean));
-     }
-     iaCount=docs.length;
-     iaPage=nextIA;
-   }
+     const rows=iaRes.value?.tracks||[];
+     fresh.push(...rows);
+     iaCount=rows.length;
+     iaPage=iaRes.value?.page||nextIA;
+   }else errors.push(`Internet Archive: ${iaRes.reason?.message||'errore'}`);
    const ids=new Set(catalog.map(x=>x.id));
-   catalog.push(...fresh.filter(x=>!ids.has(x.id)));
+   const unique=fresh.filter(x=>!ids.has(x.id));
+   catalog.push(...unique);
    onlinePage++;
-   onlineHasMore=(jamCount===JAMENDO_ROWS)||(iaCount===ONLINE_ROWS);
+   onlineHasMore=(jamCount===JAMENDO_ROWS)||(iaCount>0 && iaCount>=ONLINE_ROWS);
    renderAll();
    if($('#onlineStatus')){
-     if(fresh.length){
+     if(unique.length){
        const parts=[];
        if(jamCount) parts.push(`${jamCount} Jamendo`);
        if(iaCount) parts.push(`${iaCount} Internet Archive`);
-       $('#onlineStatus').innerHTML=`${fresh.length} nuovi brani: ${parts.join(' + ')}${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Premi “＋ Carica altri” per continuare.':''}`;
+       const err=errors.length?`<br><small>${errors.join(' · ')}</small>`:'';
+       $('#onlineStatus').innerHTML=`${unique.length} nuovi brani${parts.length?`: ${parts.join(' + ')}`:''}${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Premi “＋ Carica altri” per continuare.':''}${err}`;
      }else if(query){
-       $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b><br><span>Puoi cercare subito il brano su YouTube.</span><br><button type="button" class="smallBtn primary fallbackYoutube" data-query="${esc(query)}">▶ Cerca “${esc(query)}” su YouTube</button>`;
+       const diag=errors.length?`<br><small>${errors.join(' · ')}</small>`:'';
+       $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b>${diag}<br><span>Puoi cercare subito il brano su YouTube.</span><br><button type="button" class="smallBtn primary fallbackYoutube" data-query="${esc(query)}">▶ Cerca “${esc(query)}” su YouTube</button>`;
      }else{
-       $('#onlineStatus').textContent='I cataloghi online non hanno restituito nuovi brani. Riprova tra poco.';
+       $('#onlineStatus').innerHTML=errors.length?`Cataloghi online non raggiungibili in questo momento.<br><small>${errors.join(' · ')}</small>`:'I cataloghi online non hanno restituito nuovi brani. Riprova tra poco.';
      }
    }
-   showToast(fresh.length?`${fresh.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
+   showToast(unique.length?`${unique.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
  }catch(e){
-   if($('#onlineStatus')) $('#onlineStatus').textContent='Cataloghi online temporaneamente non disponibili. La libreria locale continua a funzionare.';
+   if($('#onlineStatus')) $('#onlineStatus').textContent=`Errore cataloghi online: ${e?.message||'connessione non disponibile'}`;
    showToast('Cataloghi online non disponibili');
  }finally{onlineLoading=false;updateOnlineButtons()}
 }
@@ -461,16 +509,16 @@ if(bootSearch) bootSearch.value='';
 onlineQuery='';
 loadOnlineCatalog('',false);
 window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlineSearchInput'); if(el && !onlineLoading) el.value=''; });
-// V30: aggressively update the service worker without touching IndexedDB/localStorage.
+// V36: aggressively update the service worker without touching IndexedDB/localStorage.
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
  let reloaded=false;
- const key="mf_v32_reloaded";
+ const key="mf_v36_reloaded";
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
    if(reloaded || sessionStorage.getItem(key)==="1") return;
    reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
  });
- navigator.serviceWorker.register("./sw.js?v=32",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=36",{updateViaCache:"none"})
    .then(reg=>{ reg.update(); if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); })
    .catch(()=>{});
 }
