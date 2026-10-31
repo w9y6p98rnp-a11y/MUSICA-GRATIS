@@ -1,13 +1,23 @@
 const catalog=[
-{id:"carefree",title:"Carefree",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Carefree.ogg",class:"a"},
-{id:"acid",title:"AcidJazz",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_AcidJazz.ogg",class:"b"},
-{id:"beat",title:"Beat electronic",artist:"beat",genre:"Elettronica",license:"Public domain",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Beat_electronic.ogg",class:"c"},
-{id:"piano",title:"Piano and beat",artist:"Wiki Learning Tec de Monterrey",genre:"Ambient",license:"Free use",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Piano_and_beat.ogg",class:"d"},
-{id:"meditation",title:"Meditation Impromptu 03",artist:"Kevin MacLeod",genre:"Ambient",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_03_-_Meditation_Impromptu_03.ogg",class:"e"},
-{id:"slowburn",title:"Slow Burn",artist:"Kevin MacLeod",genre:"Blues",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_08_-_Slow_Burn.ogg",class:"f"},
-{id:"gregorian",title:"Gregorian Chant",artist:"Kevin MacLeod",genre:"Classica",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/KevinMacLeod_-_Gregorian_Chant.ogg",class:"g"},
-{id:"radio",title:"Radio Martini",artist:"Kevin MacLeod",genre:"Jazz",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Radio_Martini.ogg",class:"h"}
+{id:"carefree",title:"Carefree",artist:"Kevin MacLeod",genre:"Jazz",album:"Jazz After Dark",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Carefree.ogg",class:"a"},
+{id:"acid",title:"AcidJazz",artist:"Kevin MacLeod",genre:"Jazz",album:"Jazz After Dark",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_AcidJazz.ogg",class:"b"},
+{id:"beat",title:"Beat electronic",artist:"beat",genre:"Elettronica",album:"Electronic Sketches",license:"Public domain",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Beat_electronic.ogg",class:"c"},
+{id:"piano",title:"Piano and beat",artist:"Wiki Learning Tec de Monterrey",genre:"Ambient",album:"Quiet Moments",license:"Free use",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Piano_and_beat.ogg",class:"d"},
+{id:"meditation",title:"Meditation Impromptu 03",artist:"Kevin MacLeod",genre:"Ambient",album:"Quiet Moments",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_03_-_Meditation_Impromptu_03.ogg",class:"e"},
+{id:"slowburn",title:"Slow Burn",artist:"Kevin MacLeod",genre:"Blues",album:"Blue Roads",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_08_-_Slow_Burn.ogg",class:"f"},
+{id:"gregorian",title:"Gregorian Chant",artist:"Kevin MacLeod",genre:"Classica",album:"Sacred & Classical",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/KevinMacLeod_-_Gregorian_Chant.ogg",class:"g"},
+{id:"radio",title:"Radio Martini",artist:"Kevin MacLeod",genre:"Jazz",album:"Jazz After Dark",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Radio_Martini.ogg",class:"h"}
 ];
+const albums=[
+{id:"jazz-after-dark",title:"Jazz After Dark",artist:"Kevin MacLeod",genre:"Jazz",description:"Ritmi morbidi e atmosfere notturne.",class:"album-a",ids:["carefree","acid","radio"]},
+{id:"quiet-moments",title:"Quiet Moments",artist:"Various Artists",genre:"Ambient",description:"Suoni lenti per staccare e respirare.",class:"album-b",ids:["piano","meditation"]},
+{id:"electronic-sketches",title:"Electronic Sketches",artist:"beat",genre:"Elettronica",description:"Piccoli paesaggi elettronici da esplorare.",class:"album-c",ids:["beat"]},
+{id:"blue-roads",title:"Blue Roads",artist:"Kevin MacLeod",genre:"Blues",description:"Un viaggio blues tra strade e tramonti.",class:"album-d",ids:["slowburn"]},
+{id:"sacred-classical",title:"Sacred & Classical",artist:"Kevin MacLeod",genre:"Classica",description:"Atmosfere solenni e suggestioni classiche.",class:"album-e",ids:["gregorian"]}
+];
+function getAlbum(id){return albums.find(a=>a.id===id)}
+function albumSongs(a){return a.ids.map(getSong).filter(Boolean)}
+
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const audio=$("#audio"), player=$("#player"), toast=$("#toast");
 let queue=[...catalog], index=0, shuffle=false, repeat=false, current=null;
@@ -39,6 +49,16 @@ function renderCatalog(){
  $("#catalogCount").textContent=`${items.length} brani`;
  $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("")
 }
+function renderAlbums(){
+ const box=$("#albums"); if(!box)return;
+ $("#albumCount").textContent=`${albums.length} raccolte`;
+ box.innerHTML=albums.map(a=>{const songs=albumSongs(a);return `<button class="albumCard" onclick="openAlbum('${a.id}')"><div class="albumCover ${a.class}"><span>♫</span><small>${songs.length} ${songs.length===1?"brano":"brani"}</small></div><div class="albumInfo"><b>${esc(a.title)}</b><span>${esc(a.artist)}</span><small>${esc(a.genre)}</small></div></button>`}).join("");
+}
+window.openAlbum=id=>{const a=getAlbum(id);if(!a)return;const songs=albumSongs(a);$("#albumDetailContent").innerHTML=`<div class="albumHero"><div class="albumHeroCover ${a.class}"><span>♫</span></div><div class="albumHeroMain"><span class="detailEyebrow">${esc(a.genre)}</span><h2>${esc(a.title)}</h2><p>${esc(a.artist)}</p><small>${esc(a.description)}</small><small>${songs.length} ${songs.length===1?"brano":"brani"}</small></div></div><div class="albumHeroActions"><button class="primary" onclick="playAlbum('${a.id}')">▶ Riproduci album</button><button class="detailBtn" onclick="queueAlbum('${a.id}')">＋ Metti in coda</button></div><div class="albumTrackList">${songs.map((s,i)=>`<div class="albumTrack"><span class="albumNumber">${i+1}</span><button class="albumTrackInfo" onclick="openTrackDetail('${s.id}')"><b>${esc(s.title)}</b><span>${esc(s.artist||"Musica locale")} · ${esc(s.genre)}</span></button><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`).join("")}</div>`;$("#albumDetail").classList.remove("hidden")};
+window.playAlbum=id=>{const a=getAlbum(id);if(!a)return;const songs=albumSongs(a);if(!songs.length)return;queue=songs;index=0;start(songs[0],songs);closeAlbumDetail();showToast(`Album: ${a.title}`)};
+window.queueAlbum=id=>{const a=getAlbum(id);if(!a)return;albumSongs(a).forEach(s=>{if(!queue.some(q=>q.id===s.id))queue.push(s)});renderQueue();closeAlbumDetail();showToast(`Aggiunto alla coda: ${a.title}`)};
+function closeAlbumDetail(){$("#albumDetail").classList.add("hidden")}
+
 function renderArtists(){
  const artists=[...new Set(catalog.map(s=>s.artist))];
  $("#artistCount").textContent=`${artists.length} artisti`;
@@ -96,7 +116,7 @@ function renderPlaylistDetail(){
  const empty='<div class="empty">La playlist è vuota. Usa “＋ Playlist” su un brano per aggiungerlo.</div>';
  box.innerHTML='<div class="detailHead"><div><span>PLAYLIST</span><h3>'+esc(p.name)+'</h3><small>'+songs.length+' '+(songs.length===1?"brano":"brani")+'</small></div><div class="detailActions"><button class="smallBtn" onclick="playPlaylist(\''+p.id+'\')">▶ Riproduci</button><button class="dangerBtn" onclick="deletePlaylist(\''+p.id+'\')">Elimina</button></div></div>'+(songs.length?rows:empty);
 }
-function renderAll(){renderPersonalHome();renderGenreFilters();renderCatalog();renderArtists();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
+function renderAll(){renderPersonalHome();renderGenreFilters();renderCatalog();renderArtists();renderAlbums();renderRecent();renderLibrary();renderFavorites();renderPlaylists()}
 window.openTrackDetail=id=>{
  const s=getSong(id); if(!s)return;
  const fav=isFav(id);

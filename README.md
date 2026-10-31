@@ -1,45 +1,18 @@
-# Musica Gratis v6
+# Musica Gratis V11
 
-PWA musicale gratuita per iPhone e Android.
+PWA musicale gratuita per iPhone e Android, ospitabile su GitHub Pages.
 
-## Novità
-- 8 brani nel catalogo
-- filtri per genere
-- ricerca per titolo, artista e genere
-- ascoltati di recente
+## V11
+- Home personalizzata
+- coda di riproduzione
 - playlist persistenti
-- player completo con shuffle/repeat
-- preferiti
-- musica locale salvata sul dispositivo
+- preferiti e ascoltati di recente
+- ricerca e filtri per genere
+- profili artista
+- pagine dettaglio brano
+- nuove pagine Album & raccolte
+- riproduzione album completa e aggiunta album alla coda
+- musica locale salvata nel dispositivo tramite IndexedDB
 
-I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Verificare sempre la licenza del singolo file; per CC BY è richiesta l'attribuzione.
-
-
-## Novità V6
-- Coda di riproduzione
-- Aggiungi un brano come prossimo
-- Visualizzazione della coda dal player
-- Rinomina playlist
-
-
-## Novità V7
-- Copertine grafiche per i brani
-- Sezione Artisti
-- Filtri per artista
-- Copertina del brano aggiornata nel player
-
-
-## V8
-Pagina dettaglio del brano con copertina, artista, genere, licenza e azioni rapide: riproduci, aggiungi alla coda, preferiti e playlist.
-
-
-## V10
-- Pagina dedicata agli artisti
-- Profilo artista con numero di brani e generi
-- Riproduci tutto per artista
-- Elenco completo dei brani dell'artista
-- Accesso rapido a dettaglio brano, coda e preferiti
-
-
-## V10
-Home personalizzata con saluto dinamico, continua ad ascoltare, preferiti in evidenza e mix per genere.
+## Licenze
+I brani del catalogo provengono da fonti con licenze individuali. Le informazioni sulla licenza sono mostrate per singolo brano; per i contenuti CC BY è richiesta attribuzione.
