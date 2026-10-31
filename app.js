@@ -91,26 +91,12 @@ async function fetchJamendoPage(query="", page=1){
    if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
    return data;
  }
- // Jamendo does not have a generic "search" parameter. Use its documented
- // search fields so artist/title/genre queries actually return results.
- const requests=[
-   new URLSearchParams({...base,namesearch:text}),
-   new URLSearchParams({...base,artist_name:text}),
-   new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
- ];
- const results=await Promise.allSettled(requests.map(jamendoJsonp));
- const merged=[]; const seen=new Set(); let hadSuccess=false;
- for(const r of results){
-   if(r.status!=='fulfilled') continue;
-   hadSuccess=true;
-   const data=r.value;
-   if(data?.headers?.status==='failed') continue;
-   for(const t of (data?.results||[])){
-     if(!seen.has(String(t.id))){seen.add(String(t.id));merged.push(t)}
-   }
- }
- if(!hadSuccess) throw new Error('Jamendo non disponibile');
- return {headers:{status:'success',results_count:merged.length},results:merged};
+ // Jamendo documents a general `search` field that searches track, album,
+ // artist names and tags/genres. Use it for one reliable, relevance-ranked call.
+ const params=new URLSearchParams({...base,search:text});
+ const data=await jamendoJsonp(params);
+ if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
+ return data;
 }
 
 function jamendoGenre(t){
@@ -412,11 +398,11 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V28: preload a first batch from both open music catalogs.
-setTimeout(()=>loadOnlineCatalog("",false),350);
-// V28: register the current service worker and force an update check without destroying offline storage.
+// V29: preload a first batch from both open music catalogs automatically.
+loadOnlineCatalog("",false);
+// V29: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=26",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=29",{updateViaCache:"none"})
    .then(reg=>reg.update())
    .catch(()=>{});
 }
