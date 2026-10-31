@@ -8,3 +8,10 @@ Novità V18:
 - service worker aggiornato a V18 per evitare che Safari continui a usare la vecchia V16/V17.
 
 Il catalogo Internet Archive cerca solo contenuti compatibili con le licenze ammesse. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
+
+
+## V19
+- Cache/service worker version bumped to v19.
+- app.js uses ?v=19 to bust old browser caches.
+- Service worker registration uses updateViaCache:none and forces update().
+- Online search validates the query and provides an explicit YouTube fallback when no free tracks are found.

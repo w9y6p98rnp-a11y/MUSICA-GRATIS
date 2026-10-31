@@ -86,7 +86,7 @@ async function loadOnlineCatalog(query="", append=true){
      if(fresh.length){
        $('#onlineStatus').innerHTML=`${fresh.length} nuovi brani trovati online${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Puoi caricarne altri.':''}`;
      }else if(query){
-       $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b><br><span>Per la musica commerciale puoi cercare direttamente su YouTube.</span><br><a class="smallBtn primary fallbackYoutube" href="${youtubeSearchUrl(query)}" target="_blank" rel="noopener noreferrer">▶ Cerca “${esc(query)}” su YouTube</a>`;
+       $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b><br><span>Puoi cercare subito il brano su YouTube.</span><br><button type="button" class="smallBtn primary fallbackYoutube" data-query="${esc(query)}">▶ Cerca “${esc(query)}” su YouTube</button>`;
      }else{
        $('#onlineStatus').innerHTML='Nessun nuovo brano trovato nel catalogo libero. Prova un artista, un titolo o un genere.';
      }
@@ -103,18 +103,35 @@ function updateOnlineButtons(){
  const search=$('#searchOnlineBtn'); if(search) search.disabled=onlineLoading;
 }
 
-window.searchOnline=()=>{const q=($('#onlineSearchInput')?.value||'').trim();loadOnlineCatalog(q,false)};
-window.loadMoreOnline=()=>{if(onlineHasMore)loadOnlineCatalog(onlineQuery,true)};
+window.searchOnline=()=>{
+ const input=document.querySelector('#onlineSearchInput');
+ const q=(input?.value||'').trim();
+ if(!q){showToast('Scrivi un artista, un brano o un genere'); input?.focus(); return}
+ loadOnlineCatalog(q,false);
+};
+window.loadMoreOnline=()=>{if(onlineHasMore&&!onlineLoading)loadOnlineCatalog(onlineQuery,true)};
 
-
-function youtubeSearchUrl(q){return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`}
+function youtubeSearchUrl(q){return `https://www.youtube.com/results?search_query=${encodeURIComponent(String(q||'').trim())}`}
+function openYouTubeSearch(q){
+ const clean=String(q||'').trim();
+ if(!clean){showToast('Scrivi un artista o un brano');return false}
+ const url=youtubeSearchUrl(clean);
+ window.location.href=url;
+ return true;
+}
+window.openYouTubeSearch=openYouTubeSearch;
 window.searchYouTube=()=>{
  const q=(document.querySelector('#youtubeSearchInput')?.value||'').trim();
  if(!q){showToast('Scrivi un artista o un brano');return}
- const url=youtubeSearchUrl(q);
- document.querySelector('#youtubeSearchResults').innerHTML=`<div class="youtubeCard"><div class="youtubeIcon">▶</div><div><b>Risultati YouTube</b><span>Cerca “${esc(q)}” su YouTube</span></div><a class="smallBtn primary" href="${url}" target="_blank" rel="noopener noreferrer">Apri YouTube</a></div>`;
- showToast('Apro la ricerca YouTube');
+ const box=document.querySelector('#youtubeSearchResults');
+ if(box) box.innerHTML=`<div class="youtubeCard"><div class="youtubeIcon">▶</div><div><b>Ricerca YouTube</b><span>Apri i risultati ufficiali per “${esc(q)}”</span></div><button class="smallBtn primary" type="button" onclick="openYouTubeSearch(${JSON.stringify(q)})">Apri YouTube</button></div>`;
+ openYouTubeSearch(q);
 };
+
+document.addEventListener('click',e=>{
+ const b=e.target.closest('.fallbackYoutube');
+ if(b){e.preventDefault();openYouTubeSearch(b.dataset.query||'');}
+});
 
 function getAlbum(id){return albums.find(a=>a.id===id)}
 function albumSongs(a){return a.ids.map(getSong).filter(Boolean)}
@@ -319,4 +336,7 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator){
+ navigator.serviceWorker.register("sw.js?v=19",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});
+ navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
+}
