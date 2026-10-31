@@ -336,8 +336,9 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V20: disable legacy service workers/caches so Safari cannot keep serving an old build.
+// V21: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});
- if(window.caches) caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).catch(()=>{});
+ navigator.serviceWorker.register("./sw.js?v=21",{updateViaCache:"none"})
+   .then(reg=>reg.update())
+   .catch(()=>{});
 }

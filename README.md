@@ -1,17 +1,13 @@
-# Musica Gratis V18
+# Musica Gratis V21
 
-Versione gratuita PWA per GitHub Pages.
+PWA per GitHub Pages.
 
-Novità V18:
-- se il catalogo libero non trova un brano/artista, compare automaticamente un pulsante per cercarlo su YouTube;
-- corretto il messaggio HTML con apostrofi (es. Gigi d'Alessio);
-- service worker aggiornato a V18 per evitare che Safari continui a usare la vecchia V16/V17.
+## V21
+- Service worker corretto e versionato v21.
+- Aggiornamento del service worker con `updateViaCache: none` e `registration.update()`.
+- Eliminazione automatica delle vecchie cache in `activate`.
+- Il service worker non intercetta richieste verso domini esterni, quindi il catalogo online e le sorgenti musicali restano freschi.
+- Libreria locale, playlist, preferiti e cronologia restano nel browser.
+- Ricerca nel catalogo libero con fallback alla ricerca ufficiale su YouTube quando non trova risultati.
 
-Il catalogo Internet Archive cerca solo contenuti compatibili con le licenze ammesse. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
-
-
-## V19
-- Cache/service worker version bumped to v19.
-- app.js uses ?v=19 to bust old browser caches.
-- Service worker registration uses updateViaCache:none and forces update().
-- Online search validates the query and provides an explicit YouTube fallback when no free tracks are found.
+Il catalogo online contiene solo contenuti compatibili con i filtri di licenza impostati nell'app. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
