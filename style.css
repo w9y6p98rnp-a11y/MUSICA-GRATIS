@@ -59,11 +59,11 @@
 .youtubeCard a{text-decoration:none}
 .searchActions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
 
-/* V23: iPhone search + prevent Safari focus zoom */
+/* V24: iPhone search + prevent Safari focus zoom */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,button,textarea,select{font-family:inherit}
-input[type="text"],input[type="search"],input[type="email"],input[type="url"],input[type="tel"],textarea{font-size:17px !important;-webkit-appearance:none;appearance:none}
-.onlineTools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0 14px}
+input[type="text"],input[type="search"],input[type="email"],input[type="url"],input[type="tel"],textarea{font-size:18px !important;-webkit-appearance:none;appearance:none}
+.onlineTools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch;margin:12px 0 14px}
 .onlineSearchBox{height:54px;min-width:0;display:flex;align-items:center;gap:9px;padding:0 16px;border:1px solid #303030;border-radius:18px;background:linear-gradient(180deg,#181818,#121212);box-shadow:inset 0 1px 0 #ffffff08,0 8px 24px #0004}
 .onlineSearchBox span{font-size:25px;line-height:1;color:#888;flex:none}
 .onlineSearchBox input{width:100%;min-width:0;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;padding:0!important;margin:0!important;box-shadow:none!important}

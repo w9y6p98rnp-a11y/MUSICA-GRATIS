@@ -1,6 +1,6 @@
-const VERSION="v23";
+const VERSION="v24";
 const CACHE=`musica-gratis-${VERSION}`;
-const ASSETS=["./","./index.html","./style.css","./app.js?v=23","./manifest.json"];
+const ASSETS=["./","./index.html","./style.css","./app.js?v=24","./manifest.json"];
 
 self.addEventListener("install",event=>{
   event.waitUntil(

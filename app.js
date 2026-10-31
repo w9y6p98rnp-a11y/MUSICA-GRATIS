@@ -336,9 +336,19 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V22: register the current service worker and force an update check without destroying offline storage.
+// V24: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=22",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=24",{updateViaCache:"none"})
    .then(reg=>reg.update())
    .catch(()=>{});
 }
+
+// V24: keep iPhone search focus at the page scale; do not rely on an old cached SW.
+(function(){
+  const fix=()=>{
+    const m=document.querySelector('meta[name="viewport"]');
+    if(m) m.setAttribute('content','width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
+    requestAnimationFrame(()=>window.scrollTo(0,0));
+  };
+  document.addEventListener('focusin',e=>{if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) fix();},{passive:true});
+})();
