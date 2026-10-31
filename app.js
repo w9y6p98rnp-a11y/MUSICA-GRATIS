@@ -23,7 +23,7 @@ let onlineQuery="";
 let jamendoPage=0;
 let iaPage=0;
 const ONLINE_ROWS=12;
-const JAMENDO_ROWS=12;
+const JAMENDO_ROWS=20;
 // Jamendo publishes a documented read-only test client id for quick API tests.
 // Replace this with your own client id before any public/commercial rollout.
 const JAMENDO_CLIENT_ID="709fa152";
@@ -67,14 +67,27 @@ async function itemToTrack(d){
  }catch(e){return null}
 }
 
+function jamendoJsonp(params){
+ return new Promise((resolve,reject)=>{
+   const cb=`mfJamendo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+   const script=document.createElement('script');
+   let done=false;
+   const cleanup=()=>{done=true;try{delete window[cb]}catch{};script.remove();clearTimeout(timer)};
+   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},12000);
+   window[cb]=data=>{if(done)return;cleanup();resolve(data)};
+   script.onerror=()=>{if(done)return;cleanup();reject(new Error('Jamendo non disponibile'))};
+   params.set('callback',cb);
+   script.src=`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`;
+   document.head.appendChild(script);
+ });
+}
+
 async function fetchJamendoPage(query="", page=1){
  const params=new URLSearchParams({client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'});
  const text=String(query||'').trim();
  if(text) params.set('search',text);
  else {params.set('featured','1');params.set('boost','popularity_month');}
- const r=await fetch(`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`,{credentials:'omit'});
- if(!r.ok) throw new Error(`Jamendo (${r.status})`);
- const data=await r.json();
+ const data=await jamendoJsonp(params);
  if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
  return data;
 }
@@ -378,9 +391,9 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V26: preload a first batch from both open music catalogs.
+// V27: preload a first batch from both open music catalogs.
 setTimeout(()=>loadOnlineCatalog("",false),350);
-// V26: register the current service worker and force an update check without destroying offline storage.
+// V27: register the current service worker and force an update check without destroying offline storage.
 if("serviceWorker" in navigator){
  navigator.serviceWorker.register("./sw.js?v=26",{updateViaCache:"none"})
    .then(reg=>reg.update())
