@@ -18,3 +18,6 @@ V29: redesigned online search field for iPhone, 16px input sizing to avoid Safar
 
 ## V29
 V29 integra due cataloghi musicali online: Jamendo e Internet Archive. La prima apertura carica automaticamente una selezione, la ricerca interroga entrambe le fonti e “Carica altri” continua la paginazione. Jamendo richiede un Client ID: questa build usa temporaneamente il Client ID pubblico di test documentato da Jamendo; prima di una pubblicazione stabile va sostituito con un Client ID proprio.
+
+
+V41: le ricerche effettuate dalla schermata Cerca restano nella schermata Cerca e non modificano più la sezione Musica online della Home.
