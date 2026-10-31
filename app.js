@@ -91,12 +91,28 @@ async function fetchJamendoPage(query="", page=1){
    if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
    return data;
  }
- // Jamendo documents a general `search` field that searches track, album,
- // artist names and tags/genres. Use it for one reliable, relevance-ranked call.
- const params=new URLSearchParams({...base,search:text});
- const data=await jamendoJsonp(params);
- if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
- return data;
+ // Use Jamendo's documented fields separately: track name, artist name and
+ // fuzzy tags/genres. Merge the results so a genre such as "electronic" works
+ // as well as an exact title or artist search.
+ const requests=[
+   new URLSearchParams({...base,namesearch:text}),
+   new URLSearchParams({...base,artist_name:text}),
+   new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
+ ];
+ const results=await Promise.allSettled(requests.map(jamendoJsonp));
+ const merged=[]; const seen=new Set(); let hadSuccess=false;
+ for(const r of results){
+   if(r.status!=="fulfilled") continue;
+   hadSuccess=true;
+   const data=r.value;
+   if(data?.headers?.status==='failed') continue;
+   for(const t of (data?.results||[])){
+     const id=String(t.id||'');
+     if(id && !seen.has(id)){seen.add(id);merged.push(t)}
+   }
+ }
+ if(!hadSuccess) throw new Error('Jamendo non disponibile');
+ return {headers:{status:'success',results_count:merged.length},results:merged};
 }
 
 function jamendoGenre(t){
@@ -398,12 +414,19 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V29: preload a first batch from both open music catalogs automatically.
+// V30: preload a first batch from both open music catalogs automatically.
 loadOnlineCatalog("",false);
-// V29: register the current service worker and force an update check without destroying offline storage.
+// V30: aggressively update the service worker without touching IndexedDB/localStorage.
+// If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=29",{updateViaCache:"none"})
-   .then(reg=>reg.update())
+ let reloaded=false;
+ const key="mf_v30_reloaded";
+ navigator.serviceWorker.addEventListener("controllerchange",()=>{
+   if(reloaded || sessionStorage.getItem(key)==="1") return;
+   reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
+ });
+ navigator.serviceWorker.register("./sw.js?v=30",{updateViaCache:"none"})
+   .then(reg=>{ reg.update(); if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); })
    .catch(()=>{});
 }
 
