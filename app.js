@@ -27,6 +27,7 @@ const JAMENDO_ROWS=20;
 // Jamendo publishes a documented read-only test client id for quick API tests.
 // Replace this with your own client id before any public/commercial rollout.
 const JAMENDO_CLIENT_ID="709fa152";
+const JAMENDO_GENRES=new Set(["punk","pop","rock","electronic","hiphop","jazz","indie","soundtrack","classical","dance","chillout","ambient","folk","metal","latino","funk","rnb","reggae","country","house","emotional","energetic","romance","sad","world","blues","happy"]);
 
 function licenseLabel(v=""){
  const t=String(v).toLowerCase();
@@ -86,18 +87,19 @@ async function fetchJamendoPage(query="", page=1){
  const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
  const text=String(query||'').trim();
  if(!text){
-   const params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
-   const data=await jamendoJsonp(params);
-   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
-   return data;
+   return fetchJamendoChartsPage("",page);
  }
- // Use Jamendo's documented fields separately: track name, artist name and
- // fuzzy tags/genres. Merge the results so a genre such as "electronic" works
- // as well as an exact title or artist search.
+ const low=text.toLowerCase();
+ // Jamendo exposes an official trending-chart endpoint with a curated list
+ // of genre tags. It is more reliable for genre discovery than treating a
+ // genre as a track title search.
+ if(JAMENDO_GENRES.has(low)){
+   return fetchJamendoChartsPage(low,page);
+ }
+ // For arbitrary text, use the documented track search fields.
  const requests=[
    new URLSearchParams({...base,namesearch:text}),
-   new URLSearchParams({...base,artist_name:text}),
-   new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
+   new URLSearchParams({...base,artist_name:text})
  ];
  const results=await Promise.allSettled(requests.map(jamendoJsonp));
  const merged=[]; const seen=new Set(); let hadSuccess=false;
@@ -113,6 +115,17 @@ async function fetchJamendoPage(query="", page=1){
  }
  if(!hadSuccess) throw new Error('Jamendo non disponibile');
  return {headers:{status:'success',results_count:merged.length},results:merged};
+}
+
+async function fetchJamendoChartsPage(tag="", page=1){
+ const params=new URLSearchParams({
+   client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),
+   audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',order:'trending_desc'
+ });
+ if(tag) params.set('tag',tag);
+ const data=await jamendoJsonp(new URLSearchParams(params));
+ if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
+ return data;
 }
 
 function jamendoGenre(t){
@@ -414,7 +427,12 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V30: preload a first batch from both open music catalogs automatically.
+// V31: never reuse a browser-restored search term on startup. The first load
+// is always a fresh catalog discovery request, so opening the app starts with
+// music immediately and does not silently search the previous query.
+const bootSearch=document.querySelector('#onlineSearchInput');
+if(bootSearch) bootSearch.value='';
+onlineQuery='';
 loadOnlineCatalog("",false);
 // V30: aggressively update the service worker without touching IndexedDB/localStorage.
 // If an older worker controls the page, reload once after the new worker takes control.
