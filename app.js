@@ -33,13 +33,13 @@ async function loadOnlineCatalog(){
  showToast("Carico musica libera…");
  try{
    const q=encodeURIComponent('mediatype:audio AND (licenseurl:*publicdomain* OR licenseurl:*cc0*)');
-   const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&rows=40&page=1&output=json`;
+   const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&rows=60&page=1&output=json`;
    const r=await fetch(url,{headers:{Accept:"application/json"}});
    if(!r.ok)throw new Error("catalogo non disponibile");
    const data=await r.json();
    const docs=data?.response?.docs||[];
    const fresh=[];
-   for(const d of docs.slice(0,24)){
+   for(const d of docs.slice(0,36)){
      try{
        const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
        const files=(m.files||[]).filter(f=>/\.(mp3|ogg|oga|wav)$/i.test(f.name||"") && !(f.name||"").toLowerCase().includes("_files.xml"));
