@@ -17,51 +17,81 @@ const albums=[
 ];
 
 let onlineLoading=false;
-let onlineLoaded=false;
-function genreFromSubject(subject=""){
- const t=String(subject).toLowerCase();
- if(/jazz|swing|blues/.test(t)) return /blues/.test(t)?"Blues":"Jazz";
- if(/classical|classica|orchestra|piano|baroque/.test(t)) return "Classica";
- if(/electronic|techno|house|ambient|drone|synth/.test(t)) return /ambient|drone/.test(t)?"Ambient":"Elettronica";
- if(/folk|country|world/.test(t)) return "World";
- if(/rock|punk|metal/.test(t)) return "Rock";
- return "Altro";
+let onlinePage=1;
+let onlineHasMore=true;
+let onlineQuery="";
+const ONLINE_ROWS=40;
+
+function licenseLabel(v=""){
+ const t=String(v).toLowerCase();
+ if(/publicdomain|cc0|creativecommons\.org\/publicdomain/.test(t)) return "Public Domain / CC0";
+ if(/creativecommons\.org\/licenses\/by\//.test(t)) return "CC BY";
+ if(/creativecommons\.org\/licenses\//.test(t)) return "Creative Commons";
+ return v ? String(v).split(/[;,]/)[0] : "Licenza da verificare";
 }
-async function loadOnlineCatalog(){
- if(onlineLoading||onlineLoaded)return;
- onlineLoading=true;
- showToast("Carico musica libera…");
+
+async function fetchOnlinePage(query="", page=1){
+ const clauses=['mediatype:audio'];
+ if(query) clauses.push(`(${query.replace(/[\\]/g,'')} OR title:"${query.replace(/"/g,'')}" OR creator:"${query.replace(/"/g,'')}")`);
+ // Favorisce materiale con licenze dichiarate riutilizzabili. La licenza viene comunque mostrata per ogni risultato.
+ clauses.push('(licenseurl:*publicdomain* OR licenseurl:*cc0* OR licenseurl:*creativecommons.org/licenses/by/* OR rights:*public domain* OR rights:*creative commons*)');
+ const q=encodeURIComponent(clauses.join(' AND '));
+ const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&fl[]=rights&rows=${ONLINE_ROWS}&page=${page}&output=json`;
+ const r=await fetch(url,{headers:{Accept:'application/json'}});
+ if(!r.ok) throw new Error('catalogo non disponibile');
+ return r.json();
+}
+
+async function itemToTrack(d){
  try{
-   const q=encodeURIComponent('mediatype:audio AND (licenseurl:*publicdomain* OR licenseurl:*cc0*)');
-   const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&rows=60&page=1&output=json`;
-   const r=await fetch(url,{headers:{Accept:"application/json"}});
-   if(!r.ok)throw new Error("catalogo non disponibile");
-   const data=await r.json();
+   const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
+   const files=(m.files||[]).filter(f=>/\.(mp3|ogg|oga|wav)$/i.test(f.name||'') && !(f.name||'').toLowerCase().includes('_files.xml'));
+   const f=files.find(x=>/\.mp3$/i.test(x.name))||files.find(x=>/\.(ogg|oga)$/i.test(x.name))||files.find(x=>/\.wav$/i.test(x.name));
+   if(!f)return null;
+   const rawLic=String(d.licenseurl||m.metadata?.licenseurl||m.metadata?.license||m.metadata?.rights||d.rights||'');
+   const lic=licenseLabel(rawLic);
+   const artist=Array.isArray(d.creator)?d.creator[0]:(d.creator||m.metadata?.creator||'Artista indipendente');
+   const subject=Array.isArray(d.subject)?d.subject.join(' '):(d.subject||m.metadata?.subject||'');
+   return {id:`ia-${d.identifier}-${f.name}`,title:d.title||m.metadata?.title||f.name.replace(/\.[^.]+$/,''),artist,genre:genreFromSubject(subject),album:m.metadata?.album||'Internet Archive',license:lic,url:`https://archive.org/download/${encodeURIComponent(d.identifier)}/${f.name.split('/').map(encodeURIComponent).join('/')}`,class:`online-${Math.floor(Math.random()*6)}`,source:'Internet Archive',sourceUrl:`https://archive.org/details/${encodeURIComponent(d.identifier)}`};
+ }catch(e){return null}
+}
+
+async function loadOnlineCatalog(query="", append=true){
+ if(onlineLoading)return;
+ onlineLoading=true;
+ const page=query!==onlineQuery?1:onlinePage;
+ if(query!==onlineQuery){onlineQuery=query;onlinePage=1;onlineHasMore=true;catalog=catalog.filter(s=>!s.source||s.source!=='Internet Archive');}
+ showToast(query?`Cerco “${query}”…`:'Carico musica online…');
+ if($('#onlineStatus')) $('#onlineStatus').textContent='Cerco musica libera nel catalogo online…';
+ try{
+   const data=await fetchOnlinePage(query,page);
    const docs=data?.response?.docs||[];
    const fresh=[];
-   for(const d of docs.slice(0,36)){
-     try{
-       const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
-       const files=(m.files||[]).filter(f=>/\.(mp3|ogg|oga|wav)$/i.test(f.name||"") && !(f.name||"").toLowerCase().includes("_files.xml"));
-       const f=files.find(x=>/\.mp3$/i.test(x.name))||files.find(x=>/\.ogg|\.oga$/i.test(x.name))||files[0];
-       const lic=String(d.licenseurl||m.metadata?.licenseurl||m.metadata?.license||"");
-       if(!f || !/(publicdomain|cc0|creativecommons\.org\/publicdomain)/i.test(lic))continue;
-       const id=`ia-${d.identifier}-${f.name}`;
-       const artist=Array.isArray(d.creator)?d.creator[0]:(d.creator||m.metadata?.creator||"Artista indipendente");
-       fresh.push({id,title:d.title||f.title||f.name.replace(/\.[^.]+$/,""),artist,genre:genreFromSubject(d.subject),album:m.metadata?.album||"Internet Archive",license:/cc0/i.test(lic)?"CC0 / Public Domain":"Public Domain",url:`https://archive.org/download/${encodeURIComponent(d.identifier)}/${f.name.split('/').map(encodeURIComponent).join('/')}`,class:`online-${fresh.length%6}`,source:"Internet Archive"});
-     }catch(e){}
+   // Metadata per blocchi piccoli: evita di bloccare il browser con decine di richieste simultanee.
+   for(let i=0;i<docs.length;i+=8){
+     const batch=await Promise.all(docs.slice(i,i+8).map(itemToTrack));
+     fresh.push(...batch.filter(Boolean));
    }
    const ids=new Set(catalog.map(x=>x.id));
    catalog.push(...fresh.filter(x=>!ids.has(x.id)));
-   onlineLoaded=true;
+   onlinePage=page+1;
+   onlineHasMore=docs.length===ONLINE_ROWS;
    renderAll();
-   if($("#onlineStatus")) $("#onlineStatus").textContent=`Catalogo online: ${fresh.length} brani Public Domain/CC0 caricati da Internet Archive.`;
-   showToast(`${fresh.length} brani liberi aggiunti`);
+   if($('#onlineStatus')) $('#onlineStatus').textContent=`${fresh.length} nuovi brani trovati online${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Puoi caricarne altri.':''}`;
+   showToast(fresh.length?`${fresh.length} brani aggiunti`:'Nessun nuovo brano trovato');
  }catch(e){
-   if($("#onlineStatus")) $("#onlineStatus").textContent="Catalogo online non disponibile: puoi usare comunque la libreria locale.";
-   showToast("Catalogo online non disponibile: uso la libreria locale");
- }finally{onlineLoading=false;}
+   if($('#onlineStatus')) $('#onlineStatus').textContent='Catalogo online temporaneamente non disponibile. La libreria locale continua a funzionare.';
+   showToast('Catalogo online non disponibile');
+ }finally{onlineLoading=false;updateOnlineButtons()}
 }
+
+function updateOnlineButtons(){
+ const more=$('#loadMoreOnline'); if(more) more.disabled=onlineLoading||!onlineHasMore;
+ const search=$('#searchOnlineBtn'); if(search) search.disabled=onlineLoading;
+}
+
+window.searchOnline=()=>{const q=($('#onlineSearchInput')?.value||'').trim();loadOnlineCatalog(q,false)};
+window.loadMoreOnline=()=>{if(onlineHasMore)loadOnlineCatalog(onlineQuery,true)};
 
 function getAlbum(id){return albums.find(a=>a.id===id)}
 function albumSongs(a){return a.ids.map(getSong).filter(Boolean)}
@@ -95,7 +125,8 @@ function renderCatalog(){
  let items=activeGenre==="Tutti"?catalog:catalog.filter(s=>s.genre===activeGenre);
  if(activeArtist!=="Tutti") items=items.filter(s=>s.artist===activeArtist);
  $("#catalogCount").textContent=`${items.length} brani`;
- $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardSource">${esc(s.source||"Catalogo locale")}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("")
+ $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardSource">${esc(s.source||"Catalogo locale")} · ${esc(s.license||"")}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("");
+ updateOnlineButtons();
 }
 function renderAlbums(){
  const box=$("#albums"); if(!box)return;
@@ -250,7 +281,7 @@ $("#chooseBtn").onclick=()=>$("#fileInput").click();$("#addBtn").onclick=()=>$("
 $("#fileInput").onchange=e=>{if(!window.db)return;[...e.target.files].forEach(file=>{const id="local-"+crypto.randomUUID();const item={id,title:file.name.replace(/\.[^/.]+$/,""),artist:"Musica locale",genre:"Locale",class:"local",blob:file};const tx=db.transaction("songs","readwrite");tx.objectStore("songs").put(item);tx.oncomplete=loadLocal});e.target.value=""};
 function loadLocal(){if(!window.db)return;const tx=db.transaction("songs","readonly"),req=tx.objectStore("songs").getAll();req.onsuccess=()=>{localSongs=req.result.map(s=>({...s,url:URL.createObjectURL(s.blob)}));renderAll()}}
 
-$("#searchInput").oninput=e=>{const q=e.target.value.toLowerCase().trim(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=out.length?out.map(songHTML).join(""):`<div class="empty">${q?"Nessun risultato.":"Scrivi un titolo, artista o genere per cercare."}</div>`};
+$("#searchInput").oninput=e=>{const q=e.target.value.toLowerCase().trim(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=out.length?out.map(songHTML).join(""):`<div class="empty">${q?"Nessun risultato locale. Usa “Cerca online” per cercare nel catalogo musicale.":"Scrivi un titolo, artista o genere per cercare."}</div>`};
 $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');$$('.page').forEach(p=>p.classList.remove('active'));$('#'+btn.dataset.page).classList.add('active')});
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
@@ -264,5 +295,5 @@ window.addToPlaylist=(pid,sid)=>{const p=playlists.find(x=>x.id===pid);if(!p)ret
 $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#playlistPicker").addEventListener("click",e=>{if(e.target.id==="playlistPicker")e.currentTarget.classList.add("hidden")});
 
 renderAll();
-loadOnlineCatalog();
+updateOnlineButtons();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});

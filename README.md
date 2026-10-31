@@ -1,8 +1,5 @@
-# Musica Gratis V13
+# Musica Gratis V15
 
-V13 aggiunge un catalogo musicale online dinamico. All’avvio l’app interroga Internet Archive e prova a caricare brani con metadati Public Domain/CC0, senza API key. La libreria locale, playlist, preferiti, coda, player, album e artisti restano disponibili.
+Catalogo locale + ricerca online dinamica su Internet Archive per materiale audio con licenze dichiarate riutilizzabili.
 
-Nota: le licenze sono specifiche per ogni file. L’app mostra la fonte e non deve essere interpretata come garanzia legale per ogni riutilizzo.
-
-
-V14: motore catalogo dinamico con ricerca Internet Archive, filtraggio Public Domain/CC0, metadati e streaming diretto.
+La V15 non carica automaticamente il catalogo: usa “Cerca online” e “Carica altri” per aggiungere risultati in modo progressivo. La licenza viene mostrata per ogni brano; verificare sempre la pagina fonte prima di riutilizzare un file.
