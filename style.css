@@ -75,3 +75,5 @@ input[type="text"],input[type="search"],input[type="email"],input[type="url"],in
 .onlineTools #loadMoreOnline{height:52px}
 @media(max-width:520px){.onlineSearchBox{height:58px;border-radius:19px;padding:0 17px}.onlineSearchActions{grid-template-columns:1fr 1fr;gap:9px}.onlineTools .smallBtn{width:100%;padding:0 12px;font-size:14px}}
 @media(max-width:390px){.onlineSearchBox{height:56px;padding:0 15px;gap:10px}.onlineSearchActions{grid-template-columns:1fr}.onlineTools .smallBtn{height:50px}}
+
+.onlineCard{position:relative}.onlineCard::before{content:"ONLINE";position:absolute;top:18px;left:18px;z-index:2;background:rgba(0,0,0,.72);padding:5px 8px;border-radius:8px;font-size:9px;font-weight:900;letter-spacing:1px}.localCard::before{content:"LOCALE";position:absolute;top:18px;left:18px;z-index:2;background:rgba(0,0,0,.62);padding:5px 8px;border-radius:8px;font-size:9px;font-weight:900;letter-spacing:1px}.onlineCard .art,.localCard .art{background-size:cover;background-position:center}.catalogEmpty{grid-column:1/-1}.onlineStatus b{color:#fff}.onlineStatus{line-height:1.45}

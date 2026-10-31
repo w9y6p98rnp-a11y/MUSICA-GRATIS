@@ -22,11 +22,11 @@ let onlineHasMore=true;
 let onlineQuery="";
 let jamendoPage=0;
 let iaPage=0;
-const ONLINE_ROWS=12;
-const JAMENDO_ROWS=20;
+const ONLINE_ROWS=16;
+const JAMENDO_ROWS=40;
 // Jamendo publishes a documented read-only test client id for quick API tests.
 // Replace this with your own client id before any public/commercial rollout.
-const JAMENDO_CLIENT_ID="709fa152";
+const JAMENDO_CLIENT_ID="942744d2";
 const JAMENDO_GENRES=new Set(["punk","pop","rock","electronic","hiphop","jazz","indie","soundtrack","classical","dance","chillout","ambient","folk","metal","latino","funk","rnb","reggae","country","house","emotional","energetic","romance","sad","world","blues","happy"]);
 
 function licenseLabel(v=""){
@@ -158,7 +158,7 @@ async function loadOnlineCatalog(query="", append=true){
  const nextJamendo=jamendoPage+1;
  const nextIA=iaPage+1;
  showToast(query?`Cerco “${query}”…`:'Carico tanta musica libera…');
- if($('#onlineStatus')) $('#onlineStatus').textContent=query?`Cerco “${esc(query)}” su Jamendo e Internet Archive…`:'Carico musica da Jamendo e Internet Archive…';
+ if($('#onlineStatus')) $('#onlineStatus').textContent=query?`Cerco “${esc(query)}” su Jamendo e Internet Archive…`:'Carico musica online…';
  try{
    const [jamRes,iaRes]=await Promise.allSettled([fetchJamendoPage(query,nextJamendo),fetchInternetArchivePage(query,nextIA)]);
    const fresh=[];
@@ -267,8 +267,22 @@ window.setGenre=g=>{activeGenre=g;activeArtist="Tutti";renderCatalog();renderGen
 function renderCatalog(){
  let items=activeGenre==="Tutti"?catalog:catalog.filter(s=>s.genre===activeGenre);
  if(activeArtist!=="Tutti") items=items.filter(s=>s.artist===activeArtist);
+ const online=items.filter(s=>s.source==="Jamendo"||s.source==="Internet Archive");
+ const local=items.filter(s=>s.source!=="Jamendo"&&s.source!=="Internet Archive");
  $("#catalogCount").textContent=`${items.length} brani`;
- $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardSource">${esc(s.source||"Catalogo locale")} · ${esc(s.license||"")}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("");
+ const card=s=>`<article class="card ${s.source?"onlineCard":"localCard"}">
+   <div class="art ${s.class||""}" ${s.image?`style="background-image:linear-gradient(180deg,transparent 35%,rgba(0,0,0,.72)),url('${esc(s.image)}')"`:""}>${s.image?"":"MUSICA LIBERA"}</div>
+   <div class="cardTitle">${esc(s.title)}</div>
+   <div class="cardArtist">${esc(s.artist)}</div>
+   <div class="cardSource">${esc(s.source||"Catalogo locale")} · ${esc(s.license||"")}</div>
+   <div class="cardActions">${actionsHTML(s)}</div>
+ </article>`;
+ $("#onlineCatalog").innerHTML=online.length?online.map(card).join(""):`<div class="empty catalogEmpty">Nessun brano online per questo filtro. Premi “＋ Carica altri” per continuare a cercare.</div>`;
+ $("#localCatalog").innerHTML=local.length?local.map(card).join(""):``;
+ $("#onlineCount").textContent=`${online.length} brani`;
+ $("#localCountHome").textContent=`${local.length} brani`;
+ $("#onlineSection").classList.toggle("hidden",online.length===0);
+ $("#localSection").classList.toggle("hidden",local.length===0);
  updateOnlineButtons();
 }
 function renderAlbums(){
