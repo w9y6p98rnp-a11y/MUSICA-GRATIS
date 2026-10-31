@@ -83,12 +83,12 @@
   <button data-page="favorites" class="navBtn"><b>♡</b><span>Preferiti</span></button>
 </nav>
 
-<section id="player" class="player hidden">
-  <div class="now">
+<section id="player" class="player hidden" aria-label="Mini player">
+  <div class="now" id="nowBar" role="button" tabindex="0" aria-label="Apri schermata In riproduzione">
     <div id="nowCover" class="cover big">♪</div>
     <div class="meta"><b id="nowTitle">—</b><span id="nowArtist">—</span></div>
     <button id="favNow" class="heart">♡</button>
-    <button id="closePlayer" class="close">×</button>
+    <button id="closePlayer" class="close" aria-label="Chiudi player">×</button>
   </div>
   <input id="progress" class="progress" type="range" min="0" max="100" value="0">
   <div class="times"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>

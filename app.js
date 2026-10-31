@@ -174,6 +174,7 @@ function start(s,customQueue=null){
  current=s;
  recent=[s.id,...recent.filter(id=>id!==s.id)].slice(0,8);saveRecent();queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
  audio.src=s.url;audio.play().catch(()=>showToast("Tocca ▶ per avviare la riproduzione"));player.classList.remove("hidden");
+ player.classList.remove("expanded");
  $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#nowCover").className=`cover big ${s.class||"local"}`;$("#nowCover").textContent="♪";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
  renderQueue();
 }
@@ -183,7 +184,9 @@ $("#nextBtn").onclick=next;$("#prevBtn").onclick=prev;
 $("#playBtn").onclick=()=>{if(!current)return;if(audio.paused){audio.play();$("#playBtn").textContent="Ⅱ"}else{audio.pause();$("#playBtn").textContent="▶"}};
 $("#shuffleBtn").onclick=()=>{shuffle=!shuffle;$("#shuffleBtn").classList.toggle("on",shuffle);showToast(shuffle?"Shuffle attivo":"Shuffle disattivato")};
 $("#repeatBtn").onclick=()=>{repeat=!repeat;audio.loop=repeat;$("#repeatBtn").classList.toggle("on",repeat);showToast(repeat?"Ripetizione attiva":"Ripetizione disattivata")};
-$("#closePlayer").onclick=()=>player.classList.add("hidden");
+$("#closePlayer").onclick=()=>{player.classList.add("hidden");player.classList.remove("expanded")};
+$("#nowBar").onclick=e=>{if(e.target.closest("button"))return;player.classList.toggle("expanded")};
+$("#nowBar").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();player.classList.toggle("expanded")}};
 $("#queueBtn").onclick=()=>{$("#queueModal").classList.remove("hidden");renderQueue()};
 $("#closeQueue").onclick=()=>$("#queueModal").classList.add("hidden");
 $("#queueModal").addEventListener("click",e=>{if(e.target.id==="queueModal")e.currentTarget.classList.add("hidden")});

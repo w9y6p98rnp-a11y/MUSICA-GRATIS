@@ -16,3 +16,7 @@ PWA musicale gratuita per iPhone e Android, ospitabile su GitHub Pages.
 
 ## Licenze
 I brani del catalogo provengono da fonti con licenze individuali. Le informazioni sulla licenza sono mostrate per singolo brano; per i contenuti CC BY è richiesta attribuzione.
+
+
+## V12
+Mini player persistente e schermata “In riproduzione”: tocca la barra del player per espanderla, vedere la copertina grande e usare tutti i controlli senza lasciare la pagina corrente.
