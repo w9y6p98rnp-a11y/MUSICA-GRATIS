@@ -54,14 +54,24 @@ function genreFromSubject(subject=""){
 async function itemToTrack(d){
  try{
    const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
-   const files=(m.files||[]).filter(f=>/\.(mp3|ogg|oga|wav)$/i.test(f.name||'') && !(f.name||'').toLowerCase().includes('_files.xml'));
-   const f=files.find(x=>/\.mp3$/i.test(x.name))||files.find(x=>/\.(ogg|oga)$/i.test(x.name))||files.find(x=>/\.wav$/i.test(x.name));
+   const files=(m.files||[]).filter(f=>{
+     const name=String(f.name||'');
+     const low=name.toLowerCase();
+     if(!/\.(mp3|m4a|mp4|aac)$/i.test(name)) return false;
+     if(low.includes('_files.xml')||low.includes('thumb')||low.includes('sample')) return false;
+     if(f.private===true || f.private==='true') return false;
+     return true;
+   });
+   const f=files.find(x=>/\.mp3$/i.test(x.name))||files.find(x=>/\.(m4a|mp4|aac)$/i.test(x.name));
    if(!f)return null;
    const rawLic=String(d.licenseurl||m.metadata?.licenseurl||m.metadata?.license||m.metadata?.rights||d.rights||'');
    const lic=licenseLabel(rawLic);
    const artist=Array.isArray(d.creator)?d.creator[0]:(d.creator||m.metadata?.creator||'Artista indipendente');
    const subject=Array.isArray(d.subject)?d.subject.join(' '):(d.subject||m.metadata?.subject||'');
-   return {id:`ia-${d.identifier}-${f.name}`,title:d.title||m.metadata?.title||f.name.replace(/\.[^.]+$/,''),artist,genre:genreFromSubject(subject),album:m.metadata?.album||'Internet Archive',license:lic,url:`https://archive.org/download/${encodeURIComponent(d.identifier)}/${f.name.split('/').map(encodeURIComponent).join('/')}`,class:`online-${Math.floor(Math.random()*6)}`,source:'Internet Archive',sourceUrl:`https://archive.org/details/${encodeURIComponent(d.identifier)}`};
+   const encodedPath=String(f.name).split('/').map(encodeURIComponent).join('/');
+   const ext=String(f.name).split('.').pop().toLowerCase();
+   const mime=ext==='mp3'?'audio/mpeg':(ext==='m4a'||ext==='mp4'?'audio/mp4':'audio/aac');
+   return {id:`ia-${d.identifier}-${f.name}`,title:d.title||m.metadata?.title||f.name.replace(/\.[^.]+$/,''),artist,genre:genreFromSubject(subject),album:m.metadata?.album||'Internet Archive',license:lic,url:`https://archive.org/download/${encodeURIComponent(d.identifier)}/${encodedPath}`,mime,class:`online-${Math.floor(Math.random()*6)}`,source:'Internet Archive',sourceUrl:`https://archive.org/details/${encodeURIComponent(d.identifier)}`};
  }catch(e){return null}
 }
 
@@ -442,15 +452,29 @@ window.toggleFavoriteById=id=>{const s=getSong(id);if(s)toggleFav(s)};
 function start(s,customQueue=null){
  current=s;
  recent=[s.id,...recent.filter(id=>id!==s.id)].slice(0,8);saveRecent();queue=customQueue||[...catalog,...localSongs];index=Math.max(0,queue.findIndex(x=>x.id===s.id));
- audio.src=s.url;audio.play().catch(()=>showToast("Tocca ▶ per avviare la riproduzione"));player.classList.remove("hidden");
+ player.classList.remove("hidden");
  player.classList.remove("expanded");
- $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#nowCover").className=`cover big ${s.class||"local"}`;$("#nowCover").textContent="♪";$("#playBtn").textContent="Ⅱ";$("#progress").value=0;$("#currentTime").textContent="0:00";
+ $("#nowTitle").textContent=s.title;$("#nowArtist").textContent=s.artist||"Musica locale";$("#favNow").textContent=isFav(s.id)?"♥":"♡";$("#nowCover").className=`cover big ${s.class||"local"}`;$("#nowCover").textContent="♪";$("#playBtn").textContent="▶";$("#progress").value=0;$("#currentTime").textContent="0:00";
+ audio.pause();
+ audio.removeAttribute("src");
+ audio.innerHTML="";
+ if(s.mime){const source=document.createElement("source");source.src=s.url;source.type=s.mime;audio.appendChild(source);}else{audio.src=s.url;}
+ audio.load();
+ const attempt=()=>audio.play().catch(err=>{
+   console.error("Musica Gratis playback error",err,s.url);
+   const code=audio.error?.code;
+   const detail=code===1?"riproduzione annullata":code===2?"errore di rete":code===3?"formato audio non supportato":code===4?"sorgente non supportata":"errore di riproduzione";
+   showToast(`Impossibile riprodurre: ${detail}`);
+   $("#playBtn").textContent="▶";
+ });
+ // load() gives iPhone Safari a clean media element before the user-initiated play.
+ if(audio.readyState>=2) attempt(); else audio.addEventListener("canplay",attempt,{once:true});
  renderQueue();
 }
 function next(){if(!queue.length)return;if(shuffle){let n=Math.floor(Math.random()*queue.length);if(queue.length>1&&n===index)n=(n+1)%queue.length;index=n}else index=(index+1)%queue.length;start(queue[index],queue)}
 function prev(){if(audio.currentTime>3){audio.currentTime=0;return}index=(index-1+queue.length)%queue.length;start(queue[index],queue)}
 $("#nextBtn").onclick=next;$("#prevBtn").onclick=prev;
-$("#playBtn").onclick=()=>{if(!current)return;if(audio.paused){audio.play();$("#playBtn").textContent="Ⅱ"}else{audio.pause();$("#playBtn").textContent="▶"}};
+$("#playBtn").onclick=()=>{if(!current)return;if(audio.paused){audio.play().then(()=>$("#playBtn").textContent="Ⅱ").catch(()=>{audio.load();audio.play().then(()=>$("#playBtn").textContent="Ⅱ").catch(()=>showToast("Questo file non può essere riprodotto da Safari"))})}else{audio.pause();$("#playBtn").textContent="▶"}};
 $("#shuffleBtn").onclick=()=>{shuffle=!shuffle;$("#shuffleBtn").classList.toggle("on",shuffle);showToast(shuffle?"Shuffle attivo":"Shuffle disattivato")};
 $("#repeatBtn").onclick=()=>{repeat=!repeat;audio.loop=repeat;$("#repeatBtn").classList.toggle("on",repeat);showToast(repeat?"Ripetizione attiva":"Ripetizione disattivata")};
 $("#closePlayer").onclick=()=>{player.classList.add("hidden");player.classList.remove("expanded")};
@@ -463,6 +487,7 @@ $("#favNow").onclick=()=>current&&toggleFav(current);
 audio.onended=()=>{if(!repeat)next()};
 audio.ontimeupdate=()=>{if(audio.duration){$("#progress").value=audio.currentTime/audio.duration*100;$("#currentTime").textContent=time(audio.currentTime)}};
 audio.onloadedmetadata=()=>$("#duration").textContent=time(audio.duration);
+audio.onerror=()=>{if(current&&audio.error) console.warn("Audio error",audio.error.code,current.url)};
 audio.onplay=()=>$("#playBtn").textContent="Ⅱ";audio.onpause=()=>$("#playBtn").textContent="▶";
 $("#progress").oninput=e=>{if(audio.duration)audio.currentTime=e.target.value/100*audio.duration};
 function time(s){s=Math.floor(s||0);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`}
