@@ -1,4 +1,4 @@
-const VERSION="v32";
+const VERSION="v33";
 const CACHE=`musica-gratis-${VERSION}`;
 const ASSETS=["./","./index.html","./style.css?v=32","./app.js?v=32","./manifest.json"];
 

@@ -26,7 +26,7 @@ const ONLINE_ROWS=12;
 const JAMENDO_ROWS=20;
 // Jamendo publishes a documented read-only test client id for quick API tests.
 // Replace this with your own client id before any public/commercial rollout.
-const JAMENDO_CLIENT_ID="709fa152";
+const JAMENDO_CLIENT_ID="942744d2";
 const JAMENDO_GENRES=new Set(["punk","pop","rock","electronic","hiphop","jazz","indie","soundtrack","classical","dance","chillout","ambient","folk","metal","latino","funk","rnb","reggae","country","house","emotional","energetic","romance","sad","world","blues","happy"]);
 
 function licenseLabel(v=""){
@@ -68,55 +68,21 @@ async function itemToTrack(d){
  }catch(e){return null}
 }
 
-function jamendoJsonp(params){
+function jamendoJsonp(params){ return jamendoJsonpEndpoint('/v3.0/tracks/',params); }
+function jamendoJsonpEndpoint(endpoint,params){
  return new Promise((resolve,reject)=>{
    const cb=`mfJamendo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
    const script=document.createElement('script');
    let done=false;
    const cleanup=()=>{done=true;try{delete window[cb]}catch{};script.remove();clearTimeout(timer)};
-   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},12000);
+   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},15000);
    window[cb]=data=>{if(done)return;cleanup();resolve(data)};
    script.onerror=()=>{if(done)return;cleanup();reject(new Error('Jamendo non disponibile'))};
    params.set('callback',cb);
-   script.src=`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`;
+   script.src=`https://api.jamendo.com${endpoint}?${params.toString()}`;
    document.head.appendChild(script);
  });
 }
-
-async function fetchJamendoPage(query="", page=1){
- const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
- const text=String(query||'').trim();
- let params;
- if(!text){
-   params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
- }else{
-   const low=text.toLowerCase();
-   if(JAMENDO_GENRES.has(low)){
-     // Official Jamendo genre discovery: featured + tag + popularity boost.
-     params=new URLSearchParams({...base,featured:'1',tags:low,boost:'popularity_month'});
-   }else{
-     // Jamendo's documented free-text search covers track, album, artist,
-     // tags and similar artists. Use it first, then broaden with artist/title
-     // fields only if needed.
-     params=new URLSearchParams({...base,search:text,boost:'popularity_month'});
-   }
- }
- const data=await jamendoJsonp(params);
- if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||'Jamendo non disponibile');
- return data;
-}
-
-function jamendoGenre(t){
- const tags=t?.musicinfo?.tags||{};
- const vals=[...(tags.genres||[]),...(tags.instruments||[]),...(tags.vartags||[])].filter(Boolean);
- return genreFromSubject(vals.join(' '));
-}
-
-function jamendoToTrack(t){
- const lic=licenseLabel(t.license_ccurl||'Creative Commons');
- return {id:`jamendo-${t.id}`,title:t.name||'Brano senza titolo',artist:t.artist_name||'Artista indipendente',genre:jamendoGenre(t),album:t.album_name||'Jamendo',license:lic,url:t.audio,image:t.image||t.album_image||'',class:`online-${Math.floor(Math.random()*6)}`,source:'Jamendo',sourceUrl:t.shareurl||`https://www.jamendo.com/track/${t.id}`,licenseUrl:t.license_ccurl||''};
-}
-
 async function loadOnlineCatalog(query="", append=true){
  if(onlineLoading)return;
  onlineLoading=true;
@@ -163,7 +129,7 @@ async function loadOnlineCatalog(query="", append=true){
    }
    showToast(fresh.length?`${fresh.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
  }catch(e){
-   if($('#onlineStatus')) $('#onlineStatus').textContent='Cataloghi online temporaneamente non disponibili. La libreria locale continua a funzionare.';
+   if($('#onlineStatus')) $('#onlineStatus').textContent=`Cataloghi online temporaneamente non disponibili: ${esc(e?.message||'errore di connessione')}. La libreria locale continua a funzionare.`;
    showToast('Cataloghi online non disponibili');
  }finally{onlineLoading=false;updateOnlineButtons()}
 }
@@ -405,11 +371,11 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V32: never reuse a browser-restored search term on startup. The first load
+// V33: never reuse a browser-restored search term on startup. The first load
 // is always a fresh catalog discovery request, so opening the app starts with
 // music immediately and does not silently search the previous query.
 const bootSearch=document.querySelector('#onlineSearchInput');
-if(bootSearch) bootSearch.value='';
+if(bootSearch){ bootSearch.value=''; bootSearch.removeAttribute('readonly'); }
 onlineQuery='';
 loadOnlineCatalog('',false);
 window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlineSearchInput'); if(el && !onlineLoading) el.value=''; });
@@ -417,12 +383,12 @@ window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlin
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
  let reloaded=false;
- const key="mf_v32_reloaded";
+ const key="mf_v33_reloaded";
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
    if(reloaded || sessionStorage.getItem(key)==="1") return;
    reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
  });
- navigator.serviceWorker.register("./sw.js?v=32",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=33",{updateViaCache:"none"})
    .then(reg=>{ reg.update(); if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); })
    .catch(()=>{});
 }
