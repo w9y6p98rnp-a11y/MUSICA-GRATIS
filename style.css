@@ -59,16 +59,19 @@
 .youtubeCard a{text-decoration:none}
 .searchActions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
 
-/* V24: iPhone search + prevent Safari focus zoom */
+/* V25: modern iPhone search field */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,button,textarea,select{font-family:inherit}
 input[type="text"],input[type="search"],input[type="email"],input[type="url"],input[type="tel"],textarea{font-size:18px !important;-webkit-appearance:none;appearance:none}
-.onlineTools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch;margin:12px 0 14px}
-.onlineSearchBox{height:54px;min-width:0;display:flex;align-items:center;gap:9px;padding:0 16px;border:1px solid #303030;border-radius:18px;background:linear-gradient(180deg,#181818,#121212);box-shadow:inset 0 1px 0 #ffffff08,0 8px 24px #0004}
-.onlineSearchBox span{font-size:25px;line-height:1;color:#888;flex:none}
-.onlineSearchBox input{width:100%;min-width:0;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;padding:0!important;margin:0!important;box-shadow:none!important}
-.onlineSearchBox input::placeholder{color:#6f6f6f;opacity:1}
-.onlineTools .smallBtn{height:54px;white-space:nowrap;padding:0 20px;border-radius:18px;font-size:14px}
-.onlineTools #loadMoreOnline{grid-column:1 / -1;justify-self:start;height:48px}
-@media(max-width:520px){.onlineTools{grid-template-columns:1fr;gap:9px}.onlineTools .smallBtn{padding:0 14px;width:100%}.onlineSearchBox{height:52px;border-radius:17px;padding:0 14px}.onlineSearchBox span{font-size:22px}}
-@media(max-width:390px){.onlineTools .smallBtn{padding:0 11px;font-size:14px}.onlineSearchBox{gap:7px}}
+.onlineTools{display:flex;flex-direction:column;gap:10px;margin:14px 0 16px;width:100%}
+.onlineSearchBox{width:100%;height:60px;min-width:0;display:flex;align-items:center;gap:12px;padding:0 18px;border:1px solid #2f2f2f;border-radius:20px;background:linear-gradient(180deg,#1d1d1f,#151516);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 28px rgba(0,0,0,.28);cursor:text;transition:border-color .18s ease,box-shadow .18s ease}
+.onlineSearchBox:focus-within{border-color:#555;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 28px rgba(0,0,0,.28),0 0 0 3px rgba(255,255,255,.05)}
+.onlineSearchBox .searchIcon{width:26px;height:26px;display:grid;place-items:center;flex:none;color:#9b9b9f}
+.onlineSearchBox .searchIcon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.onlineSearchBox input{width:100%;min-width:0;height:100%;border:0!important;outline:0!important;background:transparent!important;color:#fff!important;padding:0!important;margin:0!important;box-shadow:none!important;-webkit-tap-highlight-color:transparent}
+.onlineSearchBox input::placeholder{color:#7e7e83;opacity:1}
+.onlineSearchActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.onlineTools .smallBtn{height:52px;white-space:nowrap;padding:0 18px;border-radius:17px;font-size:14px}
+.onlineTools #loadMoreOnline{height:52px}
+@media(max-width:520px){.onlineSearchBox{height:58px;border-radius:19px;padding:0 17px}.onlineSearchActions{grid-template-columns:1fr 1fr;gap:9px}.onlineTools .smallBtn{width:100%;padding:0 12px;font-size:14px}}
+@media(max-width:390px){.onlineSearchBox{height:56px;padding:0 15px;gap:10px}.onlineSearchActions{grid-template-columns:1fr}.onlineTools .smallBtn{height:50px}}

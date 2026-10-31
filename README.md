@@ -1,8 +1,8 @@
-# Musica Gratis V24
+# Musica Gratis V25
 
 PWA per GitHub Pages.
 
-## V24
+## V25
 - Service worker corretto e versionato v22.
 - Aggiornamento del service worker con `updateViaCache: none` e `registration.update()`.
 - Eliminazione automatica delle vecchie cache in `activate`.
@@ -13,4 +13,4 @@ PWA per GitHub Pages.
 Il catalogo online contiene solo contenuti compatibili con i filtri di licenza impostati nell'app. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
 
 
-V24: redesigned online search field for iPhone, 16px input sizing to avoid Safari focus zoom, and updated service-worker cache version.
+V25: redesigned online search field for iPhone, 16px input sizing to avoid Safari focus zoom, and updated service-worker cache version.
