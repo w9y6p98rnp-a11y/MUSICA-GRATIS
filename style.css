@@ -50,3 +50,11 @@
 
 .onlineStatus{margin:-10px 0 14px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;color:#aaa;font-size:12px;background:rgba(255,255,255,.025)}
 .cardSource{font-size:10px;color:#777;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.youtubeTools{margin-top:10px}
+.youtubeCard{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.04);margin:10px 0}
+.youtubeCard>div:nth-child(2){flex:1;display:flex;flex-direction:column;gap:3px}
+.youtubeCard span{opacity:.65;font-size:13px}
+.youtubeIcon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#ff0000;color:#fff;font-weight:800}
+.youtubeCard a{text-decoration:none}
+.searchActions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}

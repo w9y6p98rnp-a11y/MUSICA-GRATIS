@@ -93,6 +93,16 @@ function updateOnlineButtons(){
 window.searchOnline=()=>{const q=($('#onlineSearchInput')?.value||'').trim();loadOnlineCatalog(q,false)};
 window.loadMoreOnline=()=>{if(onlineHasMore)loadOnlineCatalog(onlineQuery,true)};
 
+
+function youtubeSearchUrl(q){return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`}
+window.searchYouTube=()=>{
+ const q=(document.querySelector('#youtubeSearchInput')?.value||'').trim();
+ if(!q){showToast('Scrivi un artista o un brano');return}
+ const url=youtubeSearchUrl(q);
+ document.querySelector('#youtubeSearchResults').innerHTML=`<div class="youtubeCard"><div class="youtubeIcon">▶</div><div><b>Risultati YouTube</b><span>Cerca “${esc(q)}” su YouTube</span></div><a class="smallBtn primary" href="${url}" target="_blank" rel="noopener noreferrer">Apri YouTube</a></div>`;
+ showToast('Apro la ricerca YouTube');
+};
+
 function getAlbum(id){return albums.find(a=>a.id===id)}
 function albumSongs(a){return a.ids.map(getSong).filter(Boolean)}
 
@@ -281,7 +291,7 @@ $("#chooseBtn").onclick=()=>$("#fileInput").click();$("#addBtn").onclick=()=>$("
 $("#fileInput").onchange=e=>{if(!window.db)return;[...e.target.files].forEach(file=>{const id="local-"+crypto.randomUUID();const item={id,title:file.name.replace(/\.[^/.]+$/,""),artist:"Musica locale",genre:"Locale",class:"local",blob:file};const tx=db.transaction("songs","readwrite");tx.objectStore("songs").put(item);tx.oncomplete=loadLocal});e.target.value=""};
 function loadLocal(){if(!window.db)return;const tx=db.transaction("songs","readonly"),req=tx.objectStore("songs").getAll();req.onsuccess=()=>{localSongs=req.result.map(s=>({...s,url:URL.createObjectURL(s.blob)}));renderAll()}}
 
-$("#searchInput").oninput=e=>{const q=e.target.value.toLowerCase().trim(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=out.length?out.map(songHTML).join(""):`<div class="empty">${q?"Nessun risultato locale. Usa “Cerca online” per cercare nel catalogo musicale.":"Scrivi un titolo, artista o genere per cercare."}</div>`};
+$("#searchInput").oninput=e=>{const raw=e.target.value.trim(),q=raw.toLowerCase(),out=q?allSongs().filter(s=>(s.title+" "+(s.artist||"")+" "+(s.genre||"")).toLowerCase().includes(q)):[];$("#searchResults").innerHTML=raw?`<div class="searchActions"><button class="smallBtn" onclick="document.querySelector('#youtubeSearchInput').value=${JSON.stringify(raw)};searchYouTube()">▶ Cerca “${esc(raw)}” su YouTube</button><button class="smallBtn" onclick="document.querySelector('#onlineSearchInput').value=${JSON.stringify(raw)};searchOnline()">🔎 Cerca nel catalogo libero</button></div>`+(out.length?out.map(songHTML).join(""):`<div class="empty">Nessun risultato locale.</div>`):`<div class="empty">Scrivi un titolo, artista o genere per cercare.</div>`};
 $$('.navBtn').forEach(btn=>btn.onclick=()=>{$$('.navBtn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');$$('.page').forEach(p=>p.classList.remove('active'));$('#'+btn.dataset.page).classList.add('active')});
 
 $("#newPlaylist").onclick=()=>{const name=prompt("Nome della playlist");if(!name||!name.trim())return;const p={id:crypto.randomUUID(),name:name.trim(),ids:[]};playlists.push(p);savePlaylists();openPlaylistId=p.id;renderAll();showToast("Playlist creata")};
