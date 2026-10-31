@@ -1,22 +1,5 @@
-# Musica Gratis V11
+# Musica Gratis V13
 
-PWA musicale gratuita per iPhone e Android, ospitabile su GitHub Pages.
+V13 aggiunge un catalogo musicale online dinamico. All’avvio l’app interroga Internet Archive e prova a caricare brani con metadati Public Domain/CC0, senza API key. La libreria locale, playlist, preferiti, coda, player, album e artisti restano disponibili.
 
-## V11
-- Home personalizzata
-- coda di riproduzione
-- playlist persistenti
-- preferiti e ascoltati di recente
-- ricerca e filtri per genere
-- profili artista
-- pagine dettaglio brano
-- nuove pagine Album & raccolte
-- riproduzione album completa e aggiunta album alla coda
-- musica locale salvata nel dispositivo tramite IndexedDB
-
-## Licenze
-I brani del catalogo provengono da fonti con licenze individuali. Le informazioni sulla licenza sono mostrate per singolo brano; per i contenuti CC BY è richiesta attribuzione.
-
-
-## V12
-Mini player persistente e schermata “In riproduzione”: tocca la barra del player per espanderla, vedere la copertina grande e usare tutti i controlli senza lasciare la pagina corrente.
+Nota: le licenze sono specifiche per ogni file. L’app mostra la fonte e non deve essere interpretata come garanzia legale per ogni riutilizzo.

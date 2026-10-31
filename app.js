@@ -1,4 +1,4 @@
-const catalog=[
+let catalog=[
 {id:"carefree",title:"Carefree",artist:"Kevin MacLeod",genre:"Jazz",album:"Jazz After Dark",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_Carefree.ogg",class:"a"},
 {id:"acid",title:"AcidJazz",artist:"Kevin MacLeod",genre:"Jazz",album:"Jazz After Dark",license:"CC BY 3.0",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kevin_MacLeod_-_AcidJazz.ogg",class:"b"},
 {id:"beat",title:"Beat electronic",artist:"beat",genre:"Elettronica",album:"Electronic Sketches",license:"Public domain",url:"https://commons.wikimedia.org/wiki/Special:Redirect/file/Beat_electronic.ogg",class:"c"},
@@ -15,6 +15,54 @@ const albums=[
 {id:"blue-roads",title:"Blue Roads",artist:"Kevin MacLeod",genre:"Blues",description:"Un viaggio blues tra strade e tramonti.",class:"album-d",ids:["slowburn"]},
 {id:"sacred-classical",title:"Sacred & Classical",artist:"Kevin MacLeod",genre:"Classica",description:"Atmosfere solenni e suggestioni classiche.",class:"album-e",ids:["gregorian"]}
 ];
+
+let onlineLoading=false;
+let onlineLoaded=false;
+function genreFromSubject(subject=""){
+ const t=String(subject).toLowerCase();
+ if(/jazz|swing|blues/.test(t)) return /blues/.test(t)?"Blues":"Jazz";
+ if(/classical|classica|orchestra|piano|baroque/.test(t)) return "Classica";
+ if(/electronic|techno|house|ambient|drone|synth/.test(t)) return /ambient|drone/.test(t)?"Ambient":"Elettronica";
+ if(/folk|country|world/.test(t)) return "World";
+ if(/rock|punk|metal/.test(t)) return "Rock";
+ return "Altro";
+}
+async function loadOnlineCatalog(){
+ if(onlineLoading||onlineLoaded)return;
+ onlineLoading=true;
+ showToast("Carico musica libera…");
+ try{
+   const q=encodeURIComponent('mediatype:audio AND (licenseurl:*publicdomain* OR licenseurl:*cc0*)');
+   const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&rows=40&page=1&output=json`;
+   const r=await fetch(url,{headers:{Accept:"application/json"}});
+   if(!r.ok)throw new Error("catalogo non disponibile");
+   const data=await r.json();
+   const docs=data?.response?.docs||[];
+   const fresh=[];
+   for(const d of docs.slice(0,24)){
+     try{
+       const m=await fetch(`https://archive.org/metadata/${encodeURIComponent(d.identifier)}`).then(x=>x.json());
+       const files=(m.files||[]).filter(f=>/\.(mp3|ogg|oga|wav)$/i.test(f.name||"") && !(f.name||"").toLowerCase().includes("_files.xml"));
+       const f=files.find(x=>/\.mp3$/i.test(x.name))||files.find(x=>/\.ogg|\.oga$/i.test(x.name))||files[0];
+       const lic=String(d.licenseurl||m.metadata?.licenseurl||m.metadata?.license||"");
+       if(!f || !/(publicdomain|cc0|creativecommons\.org\/publicdomain)/i.test(lic))continue;
+       const id=`ia-${d.identifier}-${f.name}`;
+       const artist=Array.isArray(d.creator)?d.creator[0]:(d.creator||m.metadata?.creator||"Artista indipendente");
+       fresh.push({id,title:d.title||f.title||f.name.replace(/\.[^.]+$/,""),artist,genre:genreFromSubject(d.subject),album:m.metadata?.album||"Internet Archive",license:/cc0/i.test(lic)?"CC0 / Public Domain":"Public Domain",url:`https://archive.org/download/${encodeURIComponent(d.identifier)}/${f.name.split('/').map(encodeURIComponent).join('/')}`,class:`online-${fresh.length%6}`,source:"Internet Archive"});
+     }catch(e){}
+   }
+   const ids=new Set(catalog.map(x=>x.id));
+   catalog.push(...fresh.filter(x=>!ids.has(x.id)));
+   onlineLoaded=true;
+   renderAll();
+   if($("#onlineStatus")) $("#onlineStatus").textContent=`Catalogo online: ${fresh.length} brani Public Domain/CC0 caricati da Internet Archive.`;
+   showToast(`${fresh.length} brani liberi aggiunti`);
+ }catch(e){
+   if($("#onlineStatus")) $("#onlineStatus").textContent="Catalogo online non disponibile: puoi usare comunque la libreria locale.";
+   showToast("Catalogo online non disponibile: uso la libreria locale");
+ }finally{onlineLoading=false;}
+}
+
 function getAlbum(id){return albums.find(a=>a.id===id)}
 function albumSongs(a){return a.ids.map(getSong).filter(Boolean)}
 
@@ -47,7 +95,7 @@ function renderCatalog(){
  let items=activeGenre==="Tutti"?catalog:catalog.filter(s=>s.genre===activeGenre);
  if(activeArtist!=="Tutti") items=items.filter(s=>s.artist===activeArtist);
  $("#catalogCount").textContent=`${items.length} brani`;
- $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("")
+ $("#catalog").innerHTML=items.map(s=>`<article class="card"><div class="art ${s.class||""}">MUSICA LIBERA</div><div class="cardTitle">${esc(s.title)}</div><div class="cardArtist">${esc(s.artist)}</div><div class="cardSource">${esc(s.source||"Catalogo locale")}</div><div class="cardActions">${actionsHTML(s)}</div></article>`).join("")
 }
 function renderAlbums(){
  const box=$("#albums"); if(!box)return;
@@ -216,4 +264,5 @@ window.addToPlaylist=(pid,sid)=>{const p=playlists.find(x=>x.id===pid);if(!p)ret
 $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#playlistPicker").addEventListener("click",e=>{if(e.target.id==="playlistPicker")e.currentTarget.classList.add("hidden")});
 
 renderAll();
+loadOnlineCatalog();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
