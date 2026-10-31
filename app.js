@@ -26,7 +26,7 @@ const ONLINE_ROWS=12;
 const JAMENDO_ROWS=20;
 // Jamendo publishes a documented read-only test client id for quick API tests.
 // Replace this with your own client id before any public/commercial rollout.
-const JAMENDO_CLIENT_ID="942744d2";
+const JAMENDO_CLIENT_ID="709fa152";
 const JAMENDO_GENRES=new Set(["punk","pop","rock","electronic","hiphop","jazz","indie","soundtrack","classical","dance","chillout","ambient","folk","metal","latino","funk","rnb","reggae","country","house","emotional","energetic","romance","sad","world","blues","happy"]);
 
 function licenseLabel(v=""){
@@ -35,6 +35,19 @@ function licenseLabel(v=""){
  if(/creativecommons\.org\/licenses\/by\//.test(t)) return "CC BY";
  if(/creativecommons\.org\/licenses\//.test(t)) return "Creative Commons";
  return v ? String(v).split(/[;,]/)[0] : "Licenza da verificare";
+}
+
+function genreFromSubject(subject=""){
+ const s=String(subject||"").toLowerCase();
+ const map=[
+  ["electronic","Elettronica"],["electronica","Elettronica"],["edm","Elettronica"],["house","House"],["techno","Elettronica"],
+  ["jazz","Jazz"],["blues","Blues"],["ambient","Ambient"],["chillout","Chillout"],["classical","Classica"],
+  ["rock","Rock"],["metal","Metal"],["pop","Pop"],["hip hop","Hip Hop"],["hiphop","Hip Hop"],["rap","Hip Hop"],
+  ["folk","Folk"],["country","Country"],["reggae","Reggae"],["funk","Funk"],["soul","Soul"],["rnb","R&B"],
+  ["soundtrack","Colonne sonore"],["world","World"],["latin","Latino"],["latino","Latino"]
+ ];
+ for(const [key,label] of map) if(s.includes(key)) return label;
+ return "Musica libera";
 }
 
 async function fetchInternetArchivePage(query="", page=1){
@@ -68,21 +81,76 @@ async function itemToTrack(d){
  }catch(e){return null}
 }
 
-function jamendoJsonp(params){ return jamendoJsonpEndpoint('/v3.0/tracks/',params); }
-function jamendoJsonpEndpoint(endpoint,params){
+function jamendoJsonp(params){
  return new Promise((resolve,reject)=>{
    const cb=`mfJamendo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
    const script=document.createElement('script');
    let done=false;
    const cleanup=()=>{done=true;try{delete window[cb]}catch{};script.remove();clearTimeout(timer)};
-   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},15000);
+   const timer=setTimeout(()=>{if(done)return;cleanup();reject(new Error('Jamendo timeout'))},12000);
    window[cb]=data=>{if(done)return;cleanup();resolve(data)};
    script.onerror=()=>{if(done)return;cleanup();reject(new Error('Jamendo non disponibile'))};
    params.set('callback',cb);
-   script.src=`https://api.jamendo.com${endpoint}?${params.toString()}`;
+   script.src=`https://api.jamendo.com/v3.0/tracks/?${params.toString()}`;
    document.head.appendChild(script);
  });
 }
+
+async function fetchJamendoPage(query="", page=1){
+ const base={client_id:JAMENDO_CLIENT_ID,format:'json',limit:String(JAMENDO_ROWS),offset:String((page-1)*JAMENDO_ROWS),audioformat:'mp32',imagesize:'300',include:'licenses,musicinfo',type:'single albumtrack'};
+ const text=String(query||"").trim();
+ if(!text){
+   const params=new URLSearchParams({...base,featured:'1',boost:'popularity_month'});
+   const data=await jamendoJsonp(params);
+   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||`Jamendo error ${data.headers.code||''}`.trim());
+   return data;
+ }
+ const low=text.toLowerCase();
+ if(JAMENDO_GENRES.has(low)){
+   const params=new URLSearchParams({...base,featured:'1',tags:low,boost:'popularity_month'});
+   const data=await jamendoJsonp(params);
+   if(data?.headers?.status==='failed') throw new Error(data.headers.error_message||`Jamendo error ${data.headers.code||''}`.trim());
+   return data;
+ }
+ // Jamendo documents search as a free-text search across track, album,
+ // artist and tags. Fall back to dedicated name/artist/tag searches if it
+ // returns no rows, while keeping one combined page for the UI.
+ const searchParams=new URLSearchParams({...base,search:text,boost:'popularity_month'});
+ const first=await jamendoJsonp(searchParams);
+ if(first?.headers?.status==='failed') throw new Error(first.headers.error_message||`Jamendo error ${first.headers.code||''}`.trim());
+ if((first?.results||[]).length) return first;
+ const requests=[
+   new URLSearchParams({...base,namesearch:text}),
+   new URLSearchParams({...base,artist_name:text}),
+   new URLSearchParams({...base,fuzzytags:text.toLowerCase()})
+ ];
+ const results=await Promise.allSettled(requests.map(jamendoJsonp));
+ const merged=[]; const seen=new Set(); let ok=false;
+ for(const r of results){
+   if(r.status!=='fulfilled') continue;
+   ok=true;
+   const data=r.value;
+   if(data?.headers?.status==='failed') continue;
+   for(const t of (data?.results||[])){
+     const id=String(t.id);
+     if(!seen.has(id)){seen.add(id);merged.push(t)}
+   }
+ }
+ if(!ok) throw new Error('Jamendo non disponibile');
+ return {headers:{status:'success',code:0,error_message:'',results_count:merged.length},results:merged};
+}
+
+function jamendoGenre(t){
+ const tags=t?.musicinfo?.tags||{};
+ const vals=[...(tags.genres||[]),...(tags.instruments||[]),...(tags.vartags||[])].filter(Boolean);
+ return genreFromSubject(vals.join(' '));
+}
+
+function jamendoToTrack(t){
+ const lic=licenseLabel(t.license_ccurl||'Creative Commons');
+ return {id:`jamendo-${t.id}`,title:t.name||'Brano senza titolo',artist:t.artist_name||'Artista indipendente',genre:jamendoGenre(t),album:t.album_name||'Jamendo',license:lic,url:t.audio,image:t.image||t.album_image||'',class:`online-${Math.floor(Math.random()*6)}`,source:'Jamendo',sourceUrl:t.shareurl||`https://www.jamendo.com/track/${t.id}`,licenseUrl:t.license_ccurl||''};
+}
+
 async function loadOnlineCatalog(query="", append=true){
  if(onlineLoading)return;
  onlineLoading=true;
@@ -129,7 +197,7 @@ async function loadOnlineCatalog(query="", append=true){
    }
    showToast(fresh.length?`${fresh.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
  }catch(e){
-   if($('#onlineStatus')) $('#onlineStatus').textContent=`Cataloghi online temporaneamente non disponibili: ${esc(e?.message||'errore di connessione')}. La libreria locale continua a funzionare.`;
+   if($('#onlineStatus')) $('#onlineStatus').textContent='Cataloghi online temporaneamente non disponibili. La libreria locale continua a funzionare.';
    showToast('Cataloghi online non disponibili');
  }finally{onlineLoading=false;updateOnlineButtons()}
 }
@@ -371,11 +439,11 @@ $("#closePicker").onclick=()=>$("#playlistPicker").classList.add("hidden");$("#p
 
 renderAll();
 updateOnlineButtons();
-// V33: never reuse a browser-restored search term on startup. The first load
+// V32: never reuse a browser-restored search term on startup. The first load
 // is always a fresh catalog discovery request, so opening the app starts with
 // music immediately and does not silently search the previous query.
 const bootSearch=document.querySelector('#onlineSearchInput');
-if(bootSearch){ bootSearch.value=''; bootSearch.removeAttribute('readonly'); }
+if(bootSearch) bootSearch.value='';
 onlineQuery='';
 loadOnlineCatalog('',false);
 window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlineSearchInput'); if(el && !onlineLoading) el.value=''; });
@@ -383,12 +451,12 @@ window.addEventListener('pageshow',()=>{ const el=document.querySelector('#onlin
 // If an older worker controls the page, reload once after the new worker takes control.
 if("serviceWorker" in navigator){
  let reloaded=false;
- const key="mf_v33_reloaded";
+ const key="mf_v32_reloaded";
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
    if(reloaded || sessionStorage.getItem(key)==="1") return;
    reloaded=true; sessionStorage.setItem(key,"1"); window.location.reload();
  });
- navigator.serviceWorker.register("./sw.js?v=33",{updateViaCache:"none"})
+ navigator.serviceWorker.register("./sw.js?v=32",{updateViaCache:"none"})
    .then(reg=>{ reg.update(); if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); })
    .catch(()=>{});
 }
