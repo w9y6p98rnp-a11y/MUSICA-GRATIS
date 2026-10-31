@@ -31,3 +31,11 @@ I brani del catalogo provengono da Wikimedia Commons e hanno licenze diverse. Ve
 
 ## V8
 Pagina dettaglio del brano con copertina, artista, genere, licenza e azioni rapide: riproduci, aggiungi alla coda, preferiti e playlist.
+
+
+## V9
+- Pagina dedicata agli artisti
+- Profilo artista con numero di brani e generi
+- Riproduci tutto per artista
+- Elenco completo dei brani dell'artista
+- Accesso rapido a dettaglio brano, coda e preferiti

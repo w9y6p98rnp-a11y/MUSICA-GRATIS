@@ -45,7 +45,7 @@ function renderArtists(){
  $("#artists").innerHTML=artists.map((a,i)=>{
    const songs=catalog.filter(s=>s.artist===a);
    const letter=a.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
-   return `<button class="artistCard artist-${i%6}" onclick="setArtist('${esc(a).replace(/'/g,"&#039;")}')"><div class="artistAvatar">${esc(letter)}</div><div><b>${esc(a)}</b><span>${songs.length} ${songs.length===1?"brano":"brani"}</span></div></button>`;
+   return `<button class="artistCard artist-${i%6}" onclick="openArtist('${encodeURIComponent(a)}')"><div class="artistAvatar">${esc(letter)}</div><div><b>${esc(a)}</b><span>${songs.length} ${songs.length===1?"brano":"brani"}</span></div></button>`;
  }).join("");
 }
 window.setArtist=a=>{activeArtist=a;renderCatalog();renderArtists();showToast(a==="Tutti"?"Tutti gli artisti":`Artista: ${a}`);window.scrollTo({top:0,behavior:"smooth"})};
@@ -91,6 +91,35 @@ window.openTrackDetail=id=>{
 window.closeTrackDetail=()=>$("#trackDetail").classList.add("hidden");
 $("#closeTrackDetail").onclick=closeTrackDetail;
 $("#trackDetail").addEventListener("click",e=>{if(e.target.id==="trackDetail")closeTrackDetail()});
+
+window.openArtist=encoded=>{
+ const artist=decodeURIComponent(encoded);
+ const songs=catalog.filter(s=>s.artist===artist);
+ if(!songs.length)return;
+ const letters=artist.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+ const genres=[...new Set(songs.map(s=>s.genre))];
+ const totalLabel=songs.length===1?"1 brano":`${songs.length} brani`;
+ $("#artistDetailContent").innerHTML=`
+   <div class="artistHero">
+     <div class="artistHeroAvatar">${esc(letters)}</div>
+     <div class="artistHeroMain">
+       <span class="detailEyebrow">ARTISTA</span>
+       <h2>${esc(artist)}</h2>
+       <p>${totalLabel} · ${esc(genres.join(" · "))}</p>
+     </div>
+   </div>
+   <div class="artistHeroActions">
+     <button class="primary" onclick="playArtist('${encodeURIComponent(artist)}')">▶ Riproduci tutto</button>
+     <button class="detailBtn" onclick="setArtistFromDetail('${encodeURIComponent(artist)}');closeArtistDetail()">⌕ Vedi nel catalogo</button>
+   </div>
+   <div class="artistTrackList">${songs.map((s,i)=>`<div class="artistTrack"><button class="artistTrackCover ${s.class||"local"}" onclick="openTrackDetail('${s.id}')">${i+1}</button><button class="artistTrackInfo" onclick="openTrackDetail('${s.id}')"><b>${esc(s.title)}</b><span>${esc(s.genre)}</span></button><button class="songBtn" onclick="playSong('${s.id}')">▶</button><button class="songBtn" onclick="addNextById('${s.id}')">⏭</button><button class="heart" onclick="toggleFavoriteById('${s.id}')">${isFav(s.id)?"♥":"♡"}</button></div>`).join("")}</div>`;
+ $("#artistDetail").classList.remove("hidden");
+};
+window.closeArtistDetail=()=>$("#artistDetail").classList.add("hidden");
+$("#closeArtistDetail").onclick=closeArtistDetail;
+$("#artistDetail").addEventListener("click",e=>{if(e.target.id==="artistDetail")closeArtistDetail()});
+window.playArtist=encoded=>{const artist=decodeURIComponent(encoded);const songs=catalog.filter(s=>s.artist===artist);if(!songs.length)return;queue=songs;index=0;start(songs[0],songs);closeArtistDetail()};
+window.setArtistFromDetail=encoded=>{const artist=decodeURIComponent(encoded);activeArtist=artist;activeGenre="Tutti";renderCatalog();renderGenreFilters();renderArtists();showToast(`Artista: ${artist}`);window.scrollTo({top:0,behavior:"smooth"})};
 
 window.playSong=id=>{const s=getSong(id);if(s)start(s)};
 function renderQueue(){
