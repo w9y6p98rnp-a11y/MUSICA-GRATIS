@@ -20,7 +20,7 @@ let onlineLoading=false;
 let onlinePage=1;
 let onlineHasMore=true;
 let onlineQuery="";
-const ONLINE_ROWS=40;
+const ONLINE_ROWS=12;
 
 function licenseLabel(v=""){
  const t=String(v).toLowerCase();
@@ -31,14 +31,19 @@ function licenseLabel(v=""){
 }
 
 async function fetchOnlinePage(query="", page=1){
+ const licenseClause='(licenseurl:http*publicdomain* OR licenseurl:http*cc0* OR licenseurl:http*by*)';
+ const text=String(query||'').trim().replace(/[\\]/g,'').replace(/"/g,'');
  const clauses=['mediatype:audio'];
- if(query) clauses.push(`(${query.replace(/[\\]/g,'')} OR title:"${query.replace(/"/g,'')}" OR creator:"${query.replace(/"/g,'')}")`);
- // Favorisce materiale con licenze dichiarate riutilizzabili. La licenza viene comunque mostrata per ogni risultato.
- clauses.push('(licenseurl:*publicdomain* OR licenseurl:*cc0* OR licenseurl:*creativecommons.org/licenses/by/* OR rights:*public domain* OR rights:*creative commons*)');
- const q=encodeURIComponent(clauses.join(' AND '));
- const url=`https://archive.org/advancedsearch.php?q=${q}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=subject&fl[]=licenseurl&fl[]=rights&rows=${ONLINE_ROWS}&page=${page}&output=json`;
- const r=await fetch(url,{headers:{Accept:'application/json'}});
- if(!r.ok) throw new Error('catalogo non disponibile');
+ if(text) clauses.push(`(title:"${text}" OR creator:"${text}" OR subject:"${text}")`);
+ clauses.push(licenseClause);
+ const params=new URLSearchParams();
+ params.set('q',clauses.join(' AND '));
+ ['identifier','title','creator','subject','licenseurl','rights'].forEach(f=>params.append('fl[]',f));
+ params.set('rows',String(ONLINE_ROWS));
+ params.set('page',String(page));
+ params.set('output','json');
+ const r=await fetch(`https://archive.org/advancedsearch.php?${params.toString()}`,{credentials:'omit'});
+ if(!r.ok) throw new Error(`catalogo non disponibile (${r.status})`);
  return r.json();
 }
 
@@ -67,9 +72,9 @@ async function loadOnlineCatalog(query="", append=true){
    const data=await fetchOnlinePage(query,page);
    const docs=data?.response?.docs||[];
    const fresh=[];
-   // Metadata per blocchi piccoli: evita di bloccare il browser con decine di richieste simultanee.
-   for(let i=0;i<docs.length;i+=8){
-     const batch=await Promise.all(docs.slice(i,i+8).map(itemToTrack));
+   // Pochi metadati alla volta: su iPhone evitiamo troppe richieste contemporanee.
+   for(let i=0;i<docs.length;i+=4){
+     const batch=await Promise.all(docs.slice(i,i+4).map(itemToTrack));
      fresh.push(...batch.filter(Boolean));
    }
    const ids=new Set(catalog.map(x=>x.id));
