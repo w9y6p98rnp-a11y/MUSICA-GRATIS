@@ -82,8 +82,16 @@ async function loadOnlineCatalog(query="", append=true){
    onlinePage=page+1;
    onlineHasMore=docs.length===ONLINE_ROWS;
    renderAll();
-   if($('#onlineStatus')) $('#onlineStatus').textContent=`${fresh.length} nuovi brani trovati online${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Puoi caricarne altri.':''}`;
-   showToast(fresh.length?`${fresh.length} brani aggiunti`:'Nessun nuovo brano trovato');
+   if($('#onlineStatus')){
+     if(fresh.length){
+       $('#onlineStatus').innerHTML=`${fresh.length} nuovi brani trovati online${query?` per “${esc(query)}”`:''}. ${onlineHasMore?'Puoi caricarne altri.':''}`;
+     }else if(query){
+       $('#onlineStatus').innerHTML=`<b>Nessun brano libero trovato per “${esc(query)}”.</b><br><span>Per la musica commerciale puoi cercare direttamente su YouTube.</span><br><a class="smallBtn primary fallbackYoutube" href="${youtubeSearchUrl(query)}" target="_blank" rel="noopener noreferrer">▶ Cerca “${esc(query)}” su YouTube</a>`;
+     }else{
+       $('#onlineStatus').innerHTML='Nessun nuovo brano trovato nel catalogo libero. Prova un artista, un titolo o un genere.';
+     }
+   }
+   showToast(fresh.length?`${fresh.length} brani aggiunti`:(query?'Nessun brano libero trovato':'Nessun nuovo brano trovato'));
  }catch(e){
    if($('#onlineStatus')) $('#onlineStatus').textContent='Catalogo online temporaneamente non disponibile. La libreria locale continua a funzionare.';
    showToast('Catalogo online non disponibile');

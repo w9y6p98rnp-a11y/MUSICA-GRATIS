@@ -1,15 +1,10 @@
-# Musica Gratis V16
+# Musica Gratis V18
 
-PWA musicale gratuita, pensata per rimanere a costo zero.
+Versione gratuita PWA per GitHub Pages.
 
-## Catalogo libero
-La sezione online interroga Internet Archive con filtri orientati a materiale con licenze dichiarate riutilizzabili. La licenza viene mostrata per ogni risultato.
+Novità V18:
+- se il catalogo libero non trova un brano/artista, compare automaticamente un pulsante per cercarlo su YouTube;
+- corretto il messaggio HTML con apostrofi (es. Gigi d'Alessio);
+- service worker aggiornato a V18 per evitare che Safari continui a usare la vecchia V16/V17.
 
-## YouTube senza API
-La sezione YouTube usa la ricerca ufficiale di YouTube tramite un normale link web. Non scarica, rimuove pubblicità, aggira limitazioni o modifica il player. Non richiede una API key e non richiede un abbonamento a questa app.
-
-## Musica dal telefono
-I file audio personali restano nel dispositivo e vengono gestiti localmente.
-
-## Licenze
-La licenza dipende dal singolo brano e dalla fonte. Verificare sempre la pagina originale prima di riutilizzare un file.
+Il catalogo Internet Archive cerca solo contenuti compatibili con le licenze ammesse. La ricerca YouTube apre il servizio ufficiale e non scarica né copia i brani.
